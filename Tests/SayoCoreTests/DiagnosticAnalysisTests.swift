@@ -61,13 +61,13 @@ final class DiagnosticAnalysisTests: XCTestCase {
 
     func testAIDiagnosticEvidenceIncludesAllRecentFailuresAndTheirFullTimelines() throws {
         let lines = try [
-            line("invocation_started", ["invocationID": "a", "app": "Editor", "bundleID": "com.example.editor"], timestamp: "2026-09-07T14:49:30.000Z"),
-            line("rewrite_requested", ["invocationID": "a"], timestamp: "2026-09-07T14:50:00.000Z"),
+            line("invocation_started", ["invocationID": "a", "app": "Editor", "bundleID": "com.example.editor"], timestamp: "2026-09-07T14:29:30.000Z"),
+            line("rewrite_requested", ["invocationID": "a"], timestamp: "2026-09-07T14:30:00.000Z"),
             line("invocation_failed", ["invocationID": "a", "error": "network"], timestamp: "2026-09-07T14:55:00.000Z"),
             line("invocation_started", ["invocationID": "b", "app": "Browser"], timestamp: "2026-09-07T14:58:00.000Z"),
             line("replacement_failed", ["invocationID": "b", "error": "replacementFailed"], timestamp: "2026-09-07T14:59:00.000Z"),
-            line("invocation_started", ["invocationID": "old", "app": "Old App"], timestamp: "2026-09-07T14:40:00.000Z"),
-            line("invocation_failed", ["invocationID": "old", "error": "network"], timestamp: "2026-09-07T14:49:59.000Z"),
+            line("invocation_started", ["invocationID": "old", "app": "Old App"], timestamp: "2026-09-07T14:20:00.000Z"),
+            line("invocation_failed", ["invocationID": "old", "error": "network"], timestamp: "2026-09-07T14:29:59.000Z"),
             line("invocation_started", ["invocationID": "ok", "app": "Working App"], timestamp: "2026-09-07T14:59:00.000Z"),
             line("invocation_completed", ["invocationID": "ok", "outcome": "replaced"], timestamp: "2026-09-07T14:59:30.000Z")
         ]
@@ -108,5 +108,35 @@ final class DiagnosticAnalysisTests: XCTestCase {
         XCTAssertFalse(exported.contains("private source"))
         XCTAssertFalse(exported.contains("private translation"))
         XCTAssertFalse(exported.contains("secret-id"))
+    }
+
+    func testThirtyMinuteBoundaryFutureExclusionAndNoSilentTwentyCaseLimit() throws {
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-07T15:00:00Z"))
+        let lines = try (0..<25).map { index in
+            try line("invocation_failed", ["invocationID": "case-\(index)", "app": "App \(index)", "error": "network"],
+                     timestamp: "2026-09-07T14:30:00.000Z")
+        } + [
+            line("invocation_failed", ["invocationID": "future"], timestamp: "2026-09-07T15:00:00.001Z"),
+            line("invocation_failed", ["invocationID": "old"], timestamp: "2026-09-07T14:29:59.999Z")
+        ]
+        let evidence = AIDiagnosticEvidence(jsonLines: lines.joined(separator: "\n"), now: now)
+        XCTAssertEqual(evidence.windowMinutes, 30)
+        XCTAssertEqual(evidence.failures.count, 25)
+        XCTAssertEqual(evidence.selecting([0, 24, 99, -1]).failures.count, 2)
+        XCTAssertTrue(evidence.selecting([]).isEmpty)
+    }
+
+    func testTreeSeparatorAndFreeFormFieldsDoNotLeakPrivateValues() throws {
+        let log = try line("invocation_failed", [
+            "invocationID": "private", "app": "Editor /Users/alice/Private.txt", "error": "network",
+            "reason": "https://private.example/path?key=secret person@example.com sk-private-key",
+            "tree": "0:AXTextArea classes=[document] staticLength=9 preview=secret | arbitrary private text"
+        ])
+        let evidence = AIDiagnosticEvidence(jsonLines: log, now: try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-07T15:00:00Z")))
+        let json = try evidence.jsonText()
+        for value in ["alice", "Private.txt", "private.example", "person@example.com", "sk-private-key", "arbitrary private text", "preview=secret"] {
+            XCTAssertFalse(json.contains(value), value)
+        }
+        XCTAssertTrue(json.contains("AXTextArea"))
     }
 }

@@ -8,7 +8,7 @@ struct DiagnosticAnalysisView: View {
     @State private var application = ""
     @State private var outcome = ""
     @State private var selectedID: String?
-    @State private var showingAuthorEmailNotice = false
+    @State private var showingAIDiagnosticResult = false
     private var language: InterfaceLanguage { model.settings.interfaceLanguage }
     private func t(_ en: String, _ zh: String) -> String { model.text(en, zh) }
     private var categoryGroups: [DiagnosticGroup] { model.diagnosticAnalysis.groups.filter { $0.category == category } }
@@ -93,14 +93,27 @@ struct DiagnosticAnalysisView: View {
                 }.font(.system(size: 11)).padding(.top, 8)
             }.font(.system(size: 12))
         }
-        .alert(t("Contact the author", "联系作者"), isPresented: $showingAuthorEmailNotice) {
-            Button(t("Cancel", "取消"), role: .cancel) {}
-            Button(t("Open Mail", "打开邮件")) { model.emailDiagnosticAuthorAction?() }
-        } message: {
-            Text(t(
-                "If you have run AI diagnosis, save the result file and attach it to your email. Otherwise, describe which app you used, what you did, what you expected, and what went wrong.",
-                "如果已经运行过 AI 自诊断，请先保存诊断结果文件，并将它作为附件添加到邮件中。如果尚未运行，请详细描述出现问题的 App、当时进行了什么操作、预期结果，以及实际遇到的问题。"
-            ))
+        .sheet(isPresented: $showingAIDiagnosticResult) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(t("Analysis result", "分析结果")).font(.title2.bold())
+                ScrollView {
+                    Text(model.aiDiagnosticResult)
+                        .font(.system(size: 13))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                }
+                .background(SayoStyle.paper, in: RoundedRectangle(cornerRadius: 9))
+                Text(t("The saved file includes the analysis and the redacted evidence sent to the model.",
+                       "保存的文件包含分析结果，以及发送给模型的脱敏数据。"))
+                    .font(.caption).foregroundStyle(SayoStyle.muted)
+                HStack {
+                    Button(t("Save result file…", "保存结果文件…")) { model.saveAIDiagnosticReport() }
+                    Spacer()
+                    Button(t("Done", "完成")) { showingAIDiagnosticResult = false }
+                        .keyboardShortcut(.cancelAction)
+                }
+            }.padding(24).frame(width: 640, height: 480)
         }
     }
     private var aiDiagnosis: some View {
@@ -110,56 +123,91 @@ struct DiagnosticAnalysisView: View {
                     Text(t("AI DIAGNOSIS · EXPERIMENTAL", "AI 自诊断 · 实验性功能"))
                         .font(.system(size: 10, weight: .semibold)).tracking(1.3)
                     Text(t(
-                        "Use your configured language model to examine failed cases from the past 10 minutes. The evidence is redacted before it is sent and excludes input text, rewritten text, API keys, and prompts.",
-                        "将调用你已配置的大语言模型，检测过去 10 分钟之内失败的案例。发送前会对数据进行脱敏，不包含输入原文、改写结果、API Key 和提示词。"
+                        "Scan failed cases from the past 30 minutes, then select which ones to analyze. Only after you authorize analysis will the redacted cases be sent to your configured language model. Input text, rewritten text, API keys, and prompts are excluded.",
+                        "先检测过去 30 分钟内的失败案例，再勾选需要分析的案例。授权后才会将所选案例的脱敏数据发送给已配置的大模型，不包含输入原文、改写结果、API Key 和提示词。"
                     ))
                     .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 12)
                 Button {
-                    model.runAIDiagnostics()
+                    model.prepareAIDiagnostics()
                 } label: {
-                    HStack(spacing: 7) {
-                        if model.aiDiagnosticRunning { ProgressView().controlSize(.small) }
-                        Text(model.aiDiagnosticRunning
-                             ? t("Diagnosing…", "诊断中…")
-                             : t("Start AI diagnosis", "开始 AI 自诊断"))
-                    }
+                    Text(model.aiDiagnosticCandidates == nil
+                         ? t("Scan failed cases", "检测错误案例") : t("Scan again", "重新检测"))
                 }
                 .disabled(model.aiDiagnosticRunning)
                 .accessibilityIdentifier("start-ai-diagnosis")
             }
             if !model.aiDiagnosticStatus.isEmpty {
                 Text(model.aiDiagnosticStatus)
-                    .font(.system(size: 11)).foregroundStyle(model.aiDiagnosticResult.isEmpty ? SayoStyle.muted : SayoStyle.green)
+                    .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                     .textSelection(.enabled)
+            }
+            if let candidates = model.aiDiagnosticCandidates, !candidates.isEmpty, model.aiDiagnosticResult.isEmpty {
+                aiDiagnosticSelection(candidates)
             }
             if !model.aiDiagnosticResult.isEmpty {
                 Divider()
-                Text(t("DIAGNOSIS RESULT", "诊断结果"))
-                    .font(.system(size: 10, weight: .semibold)).tracking(1.2)
-                ScrollView {
-                    Text(model.aiDiagnosticResult)
-                        .font(.system(size: 12, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                }
-                .frame(minHeight: 120, maxHeight: 240)
-                .background(SayoStyle.paper, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(SayoStyle.line))
                 HStack {
-                    Button(t("Save result file…", "保存结果文件…")) { model.saveAIDiagnosticReport() }
-                    Button(t("Email the author", "发邮件联系作者")) { showingAuthorEmailNotice = true }
+                    Button(t("View analysis result", "查看分析结果")) { showingAIDiagnosticResult = true }
+                        .accessibilityIdentifier("view-ai-diagnosis")
+                    Button(t("Report an issue to the author", "给作者提 issue")) { model.openAIDiagnosticIssue() }
+                        .accessibilityIdentifier("report-ai-diagnosis-issue")
                     Spacer()
-                    Text(t(
-                        "The saved file includes this result and the redacted evidence sent to the model.",
-                        "保存的文件包含诊断结果，以及发送给模型的脱敏原始数据。"
-                    )).font(.system(size: 10)).foregroundStyle(SayoStyle.muted)
                 }
+                Text(t("Opens a GitHub draft containing the redacted analysis and selected cases. Review it on GitHub before submitting.",
+                       "将在 GitHub 打开含脱敏分析结果与所选案例的 issue 草稿，由你检查后提交。"))
+                    .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
             }
         }
+    }
+    private func aiDiagnosticSelection(_ candidates: AIDiagnosticEvidence) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(t("Selected \(model.aiDiagnosticSelectedCases.count) of \(candidates.failures.count)",
+                       "已选 \(model.aiDiagnosticSelectedCases.count) / \(candidates.failures.count) 个案例"))
+                Spacer()
+                Button(t("Select all", "全选")) { model.selectAllAIDiagnosticCases() }
+                Button(t("Invert selection", "反选")) { model.invertAIDiagnosticSelection() }
+            }.font(.system(size: 11))
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(candidates.failures.enumerated()), id: \.offset) { index, failure in
+                        Toggle(isOn: Binding(
+                            get: { model.aiDiagnosticSelectedCases.contains(index) },
+                            set: { model.selectAIDiagnosticCase(index, selected: $0) }
+                        )) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("#\(index + 1) · " + failure.application)
+                                    .font(.system(size: 12, weight: .medium))
+                                Text(time(DiagnosticEvent(timestamp: failure.failedAt, event: "", fields: [:]).date, date: true))
+                                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(SayoStyle.muted)
+                                if let event = failure.events.last(where: { $0.event == "invocation_failed" || $0.event == "replacement_failed" }) {
+                                    Text(DiagnosticEvent(timestamp: event.timestamp, event: event.event, fields: event.fields).explanation(language))
+                                        .font(.system(size: 11)).foregroundStyle(.red)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }.toggleStyle(.checkbox)
+                            .accessibilityIdentifier("ai-diagnostic-case-\(index)")
+                        Divider()
+                    }
+                }.padding(10)
+            }
+            .frame(height: min(200, CGFloat(candidates.failures.count) * 88))
+            .background(SayoStyle.paper, in: RoundedRectangle(cornerRadius: 9))
+            HStack(spacing: 10) {
+                if model.aiDiagnosticRunning { ProgressView().controlSize(.small) }
+                Button(model.aiDiagnosticRunning
+                       ? t("Analyzing…", "分析中…")
+                       : t("Next: authorize analysis with the configured model", "下一步：授权使用已配置的大模型进行分析")) {
+                    model.runAIDiagnostics()
+                }
+                .disabled(model.aiDiagnosticSelectedCases.isEmpty || model.aiDiagnosticRunning)
+                .accessibilityIdentifier("authorize-ai-diagnosis")
+            }
+        }.disabled(model.aiDiagnosticRunning)
     }
     private func row(_ group: DiagnosticGroup) -> some View {
         VStack(alignment: .leading, spacing: 6) {
