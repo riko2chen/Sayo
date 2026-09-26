@@ -1,0 +1,23 @@
+"""Finder layout written directly into .DS_Store by dmgbuild."""
+application = defines['app']
+files = [application]
+symlinks = {'Applications': '/Applications'}
+format = 'UDZO'
+filesystem = 'HFS+'
+compression_level = 9
+background = defines['background']
+icon = application + '/Contents/Resources/AppIcon.icns'
+icon_locations = {'Sayo.app': (185, 232), 'Applications': (475, 232)}
+window_rect = ((180, 180), (660, 420))
+default_view = 'icon-view'
+show_status_bar = False
+show_tab_view = False
+show_toolbar = False
+show_pathbar = False
+show_sidebar = False
+arrange_by = None
+grid_spacing = 80
+scroll_position = (0, 0)
+label_pos = 'bottom'
+text_size = 13
+icon_size = 112

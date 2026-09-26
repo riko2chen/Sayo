@@ -1,0 +1,3 @@
+#!/bin/sh
+# External editor adapter for terminal applications such as agy (Ctrl+G).
+exec "${SAYO_CLI:-/Applications/Sayo.app/Contents/MacOS/sayo}" edit "$@"

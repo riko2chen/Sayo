@@ -1,0 +1,72 @@
+name: Publish tagged release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing main version tag to retry, for example v0.1.0'
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: publish-sayo-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: >-
+      (github.event_name == 'push' && github.event.deleted == false) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: macos-15
+    environment: release
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate tagged source and prepare release notes
+        id: metadata
+        run: |
+          git fetch origin main --tags
+          python3 scripts/check_public_tree.py --ref HEAD --history
+          python3 scripts/ci_release.py prepare --tag "$RELEASE_TAG"
+      - name: Validate release automation
+        if: steps.metadata.outputs.published != 'true'
+        run: python3 -m unittest discover -s Tests/ReleaseTests -v
+      - name: Import signing credentials into a temporary keychain
+        if: steps.metadata.outputs.published != 'true'
+        env:
+          SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.SIGNING_CERTIFICATE_P12_BASE64 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: bash scripts/ci_signing.sh
+      - name: Build, notarize and sign release assets
+        if: steps.metadata.outputs.published != 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          bash scripts/build-app.sh release
+          bash scripts/package-dmg.sh --skip-build
+          dmg=$(python3 -c 'import plistlib; i=plistlib.load(open("dist/direct/Sayo.app/Contents/Info.plist", "rb")); print("dist/direct/Sayo-"+i["CFBundleShortVersionString"]+"-"+i["CFBundleVersion"]+".dmg")')
+          xcrun notarytool submit "$dmg" --key "$RUNNER_TEMP/sayo-notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait --timeout 30m
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          codesign --verify --strict "$dmg"
+          previous=()
+          if [[ -f .build/release-ci/previous-appcast.xml ]]; then previous=(--previous-appcast .build/release-ci/previous-appcast.xml); fi
+          python3 scripts/prepare_release.py --dmg "$dmg" --key-file "$RUNNER_TEMP/sayo-sparkle.key" --output dist/release-ci "${previous[@]}"
+      - name: Upload draft assets, verify, then publish
+        if: steps.metadata.outputs.published != 'true'
+        run: python3 scripts/ci_release.py publish --tag "$RELEASE_TAG" --directory dist/release-ci
+      - name: Remove temporary signing material
+        if: always() && steps.metadata.outputs.published != 'true'
+        run: bash scripts/ci_signing.sh cleanup

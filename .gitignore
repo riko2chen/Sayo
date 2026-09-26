@@ -1,0 +1,22 @@
+.build/
+.swiftpm/
+dist/
+.DS_Store
+*.xcuserstate
+*.xcuserdatad/
+.env
+.agent/
+.agents/
+.claude/
+.codex/
+__pycache__/
+
+# Internal archives and signing material never belong in public branches.
+/docs/
+/Exports/
+/Resources/LogoCandidates/
+*.bundle
+*.p12
+*.p8
+*.pem
+*.key

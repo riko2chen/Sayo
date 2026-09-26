@@ -1,0 +1,20 @@
+cask "sayo" do
+  version "@VERSION@,@BUILD@"
+  sha256 "@SHA256@"
+
+  url "https://github.com/@REPOSITORY@/releases/download/v#{version.csv.first}/Sayo-#{version.csv.first}-#{version.csv.second}.dmg"
+  name "Sayo"
+  desc "Translate and rewrite text where you type"
+  homepage "https://sayo.rikolab.com/"
+
+  livecheck do
+    url "https://github.com/@REPOSITORY@/releases/latest/download/appcast.xml"
+    strategy :sparkle
+  end
+
+  auto_updates true
+  depends_on macos: :sonoma
+
+  app "Sayo.app"
+  binary "#{appdir}/Sayo.app/Contents/MacOS/sayo"
+end

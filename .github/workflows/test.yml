@@ -1,0 +1,54 @@
+name: Development checks
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    name: Development checks
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check public source and update notes
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          python3 scripts/check_public_tree.py
+          python3 scripts/release_notes.py check
+          if [[ "$BASE_BRANCH" == main ]]; then
+            [[ "$HEAD_BRANCH" == dev && "$HEAD_REPOSITORY" == "$GITHUB_REPOSITORY" ]] || { echo 'Release PRs must come from this repository dev branch.'; exit 1; }
+            python3 scripts/release_notes.py check --base "$BASE_REF" --require-pending
+          fi
+      - name: Install shell test runtimes
+        run: |
+          brew install bash fish
+          printf 'SAYO_TEST_BASH=%s/bin/bash\n' "$(brew --prefix bash)" >> "$GITHUB_ENV"
+          printf 'SAYO_TEST_FISH=%s/bin/fish\n' "$(brew --prefix fish)" >> "$GITHUB_ENV"
+      - name: Unit and integration tests
+        run: swift test
+      - name: Release automation tests
+        run: python3 -m unittest discover -s Tests/ReleaseTests -v
+      - name: Build and verify universal development app
+        env:
+          SAYO_SIGNING_IDENTITY: '-'
+        run: |
+          bash scripts/build-app.sh release
+          python3 Tests/ReleaseTests/integration_release.py
+          ditto -c -k --sequesterRsrc --keepParent dist/direct/Sayo.app dist/Sayo.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Sayo-development-${{ github.sha }}
+          path: dist/Sayo.zip
+          retention-days: 7
