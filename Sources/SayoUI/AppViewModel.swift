@@ -189,7 +189,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
         language.displayName(interfaceLanguage: settings.interfaceLanguage)
     }
     public var configuredModelProfiles: [ModelProfileOption] {
-        ProviderKind.catalog.flatMap { kind in
+        // Retired templates can still have saved profiles and Keychain credentials.
+        (ProviderKind.catalog + [.anthropic]).flatMap { kind in
             configurationsByProfileID.keys
                 .filter { providerKind(for: $0) == kind && isConfigured(profileID: $0) }
                 .sorted { profileIndex(for: $0, provider: kind) < profileIndex(for: $1, provider: kind) }
@@ -197,7 +198,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         } + configuredCustomProfileIDs.map { profileOption(id: $0, provider: .custom) }
     }
     public var pendingModelProfiles: [ModelProfileOption] {
-        let allKinds = ProviderKind.catalog + [.custom]
+        let allKinds = ProviderKind.catalog + [.anthropic, .custom]
         return allKinds.flatMap { kind in
             configurationsByProfileID.keys
                 .filter { providerKind(for: $0) == kind && !isConfigured(profileID: $0) }
@@ -424,6 +425,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         scheduleModelRefresh()
     }
     public func addModelProfile(from kind: ProviderKind) {
+        guard ProviderKind.catalog.contains(kind) || kind == .custom else { return }
         guard save() else { return }
         let profileID = nextProfileID(for: kind)
         var configuration = LLMConfiguration()
@@ -447,6 +449,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
             kind = providerKind(for: selection)
         }
         guard let kind else { return nil }
+        guard !isNew || ProviderKind.catalog.contains(kind) || kind == .custom else { return nil }
         let profileID = isNew ? nextProfileID(for: kind) : selection
         var configuration = isNew ? LLMConfiguration() : configurationsByProfileID[profileID] ?? LLMConfiguration()
         configuration.provider = kind
@@ -637,7 +640,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
     }
     private func providerKind(for profileID: String) -> ProviderKind? {
         if customIndex(for: profileID) > 0 { return .custom }
-        return ProviderKind.catalog.first { profileIndex(for: profileID, provider: $0) > 0 }
+        return ProviderKind.allCases.first { profileIndex(for: profileID, provider: $0) > 0 }
     }
     private func profileIndex(for profileID: String, provider: ProviderKind) -> Int {
         guard profileID.hasPrefix(provider.rawValue) else { return 0 }

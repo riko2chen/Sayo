@@ -5,7 +5,7 @@ import SayoCore
 @MainActor final class ProviderSettingsTests: XCTestCase {
     func testProviderCatalogHasStableOrderWithoutRecommendationGrouping() {
         XCTAssertEqual(ProviderKind.catalog, [
-            .anthropic, .deepSeek, .doubao, .gemini, .chromeNano, .internAI, .localModel, .magpie, .moonshot, .openAICompatible,
+            .deepSeek, .doubao, .gemini, .chromeNano, .internAI, .localModel, .magpie, .moonshot, .openAICompatible,
             .openCode, .openRouter, .qwen, .siliconFlow, .zhipu
         ])
         XCTAssertEqual(ProviderKind.qwen.displayName, "千问AI平台")
@@ -26,6 +26,29 @@ import SayoCore
         XCTAssertEqual(ProviderKind.magpie.defaultBaseURL, "http://127.0.0.1:3425/v1")
         XCTAssertEqual(ProviderKind.magpie.defaultAPIKey, "magpie")
         XCTAssertEqual(ProviderKind.magpie.apiFormat(model: "anything"), .chatCompletions)
+    }
+
+    func testRetiredAnthropicTemplateCannotCreateProfilesButSavedProfilesRemainEditable() throws {
+        var settings = AppSettings()
+        var legacy = LLMConfiguration()
+        legacy.provider = .anthropic
+        legacy.baseURL = ProviderKind.anthropic.defaultBaseURL
+        legacy.model = "claude-existing-model"
+        settings.providerConfigurations["anthropic2"] = legacy
+        let model = AppViewModel(settings: try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings)))
+        model.loadKeyAction = { $0 == "anthropic2" ? "existing-key" : "" }
+
+        XCTAssertFalse(model.availableModelProfiles.contains { $0.provider == .anthropic })
+        XCTAssertNil(model.modelProfileEditor(for: "template:anthropic"))
+        model.changeModelProfile("template:anthropic")
+        XCTAssertEqual(model.settings.activeModelProfileID, settings.activeModelProfileID)
+        XCTAssertNil(model.settings.providerConfigurations["anthropic"])
+
+        XCTAssertEqual(model.configuredModelProfiles.first { $0.provider == .anthropic }?.id, "anthropic2")
+        let editor = try XCTUnwrap(model.modelProfileEditor(for: "anthropic2"))
+        XCTAssertEqual(editor.draft.settings.llm, legacy)
+        XCTAssertEqual(editor.draft.apiKey, "existing-key")
+        XCTAssertEqual(editor.draft.settings.llm.resolvedAPIFormat, .anthropic)
     }
 
     func testMagpieTemplateDefaultsAndAPIFormatOverrideSurviveReload() throws {

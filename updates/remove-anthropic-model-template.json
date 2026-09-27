@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Removed the Anthropic template from the new-model list while keeping existing saved profiles accessible."],
+  "zh-CN": ["从新增模型列表中移除 Anthropic 预设，已保存的配置仍可访问。"]
+}
