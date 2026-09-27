@@ -43,21 +43,18 @@ jobs:
         env:
           SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.SIGNING_CERTIFICATE_P12_BASE64 }}
           SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
-          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_APP_PASSWORD: ${{ secrets.NOTARY_APP_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: bash scripts/ci_signing.sh
       - name: Build, notarize and sign release assets
         if: steps.metadata.outputs.published != 'true'
-        env:
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
           bash scripts/build-app.sh release
           bash scripts/package-dmg.sh --skip-build
           dmg=$(python3 -c 'import plistlib; i=plistlib.load(open("dist/direct/Sayo.app/Contents/Info.plist", "rb")); print("dist/direct/Sayo-"+i["CFBundleShortVersionString"]+"-"+i["CFBundleVersion"]+".dmg")')
-          xcrun notarytool submit "$dmg" --key "$RUNNER_TEMP/sayo-notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait --timeout 30m
+          xcrun notarytool submit "$dmg" --keychain-profile sayo-release --keychain "$RUNNER_TEMP/sayo-signing.keychain-db" --wait --timeout 30m
           xcrun stapler staple "$dmg"
           xcrun stapler validate "$dmg"
           codesign --verify --strict "$dmg"
