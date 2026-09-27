@@ -69,7 +69,7 @@ final class TerminalShellBehaviorTests: XCTestCase {
         }
         try exerciseWidget(shell: .fish, input: "empty result", output: "", cursor: 3)
         // Exercise the /tmp fallback as well as a TMPDIR containing spaces.
-        try exerciseWidget(shell: .fish, input: "\n", output: "\n\n", cursor: 1, useTMPDIR: false)
+        try exerciseWidget(shell: .fish, input: "one\n", output: "\n\n", cursor: 1, useTMPDIR: false)
         for code in [1, 124, 130] {
             try exerciseWidget(shell: .fish, input: "中👋\nkeep\n\n", output: literalOutput, cursor: 2, exitCode: code)
         }
