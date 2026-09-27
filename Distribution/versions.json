@@ -1,6 +1,16 @@
 [
   {
     "version": "0.1.0",
-    "updates": ["initial"]
+    "updates": [
+      "initial"
+    ]
+  },
+  {
+    "version": "0.2.0",
+    "updates": [
+      "ai-diagnosis-selected-issue-draft",
+      "release-apple-account-notarization",
+      "remove-anthropic-model-template"
+    ]
   }
 ]

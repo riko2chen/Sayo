@@ -1,5 +1,19 @@
 # Sayo update notes
 
+## 0.2.0
+
+### English
+
+- AI diagnosis now scans the past 30 minutes, lets you select failed cases before authorizing analysis, and opens a GitHub issue draft with redacted results and evidence.
+- Support Apple Account authentication for notarized GitHub release packages.
+- Removed the Anthropic template from the new-model list while keeping existing saved profiles accessible.
+
+### 简体中文
+
+- AI 自诊断现可检测过去 30 分钟内的失败案例，勾选并授权后进行分析，支持查看结果和打开带脱敏信息的 GitHub issue 草稿。
+- 支持使用 Apple 账户认证，为 GitHub 发布的安装包完成公证。
+- 从新增模型列表中移除 Anthropic 预设，已保存的配置仍可访问。
+
 ## 0.1.0
 
 ### English
