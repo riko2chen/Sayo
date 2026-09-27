@@ -18,14 +18,16 @@ Repository: `riko2chen/Sayo`. Setup below is a separate remote operation; local 
 |---|---|
 | `SIGNING_CERTIFICATE_P12_BASE64` | Base64 of a Developer ID Application `.p12` export, including its private key |
 | `SIGNING_CERTIFICATE_PASSWORD` | Password protecting that export |
-| `NOTARY_KEY_P8_BASE64` | Base64 of an App Store Connect API private key authorized for notarization |
-| `NOTARY_KEY_ID` | API key ID |
-| `NOTARY_ISSUER_ID` | API issuer ID |
+| `NOTARY_APPLE_ID` | Apple Account email used for notarization |
+| `NOTARY_APP_PASSWORD` | App-specific password for that Apple Account |
+| `NOTARY_TEAM_ID` | Developer team ID matching the Developer ID signing certificate |
 | `SPARKLE_PRIVATE_KEY` | Existing Sparkle private signing key in the format accepted by `sign_update --ed-key-file` |
 
 Reuse the Sparkle key matching `Distribution/release.json`; do not generate a replacement for routine releases. The public key in source is intentionally public. Exporting local signing keys and adding these secrets require a separate maintainer decision; the automation never exports the maintainer's Keychain. Missing credentials fail the release instead of publishing an ad-hoc or unsigned update.
 
-Signing credentials are imported into a temporary runner keychain/files and removed in an always-run cleanup step. Untrusted PR CI has no signing secrets and performs only development builds.
+The workflow uses Apple Account authentication for notarization. Use an app-specific password, not the account's sign-in password. No App Store Connect API key or Issuer ID is required. Existing notarization credentials can be reused when the account has access to the signing team; a local Keychain profile name alone cannot authenticate a GitHub-hosted runner.
+
+Signing credentials are imported into a temporary runner keychain/files. The workflow validates the notarization credentials with Apple and stores them as the `sayo-release` profile in that same temporary keychain. The build step uses the profile, and an always-run cleanup step removes the keychain and temporary files. Untrusted PR CI has no signing secrets and performs only development builds.
 
 ## Release sequence
 

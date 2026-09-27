@@ -129,7 +129,7 @@ public enum ProviderKind: String, Codable, CaseIterable, Sendable {
 
     /// Stable catalog order. Configured profiles are promoted separately by the UI.
     public static let catalog: [ProviderKind] = [
-        .anthropic, .deepSeek, .doubao, .gemini, .chromeNano, .internAI, .localModel, .magpie, .moonshot,
+        .deepSeek, .doubao, .gemini, .chromeNano, .internAI, .localModel, .magpie, .moonshot,
         .openAICompatible, .openCode, .openRouter, .qwen, .siliconFlow, .zhipu
     ]
 

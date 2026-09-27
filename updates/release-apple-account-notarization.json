@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Support Apple Account authentication for notarized GitHub release packages."],
+  "zh-CN": ["支持使用 Apple 账户认证，为 GitHub 发布的安装包完成公证。"]
+}

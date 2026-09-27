@@ -117,6 +117,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
     @Published public var aiDiagnosticStatus = ""
     @Published public var aiDiagnosticRunning = false
     @Published public var aiDiagnosticFailureCount = 0
+    @Published public private(set) var aiDiagnosticCandidates: AIDiagnosticEvidence?
+    @Published public private(set) var aiDiagnosticSelectedCases: Set<Int> = []
     @Published public private(set) var settingsSaveState: SettingsSaveState = .saved
     public var refreshDiagnosticsAction: (() throws -> String)?
     public var openDiagnosticsAction: (() throws -> Void)?
@@ -125,7 +127,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
     public var diagnosticSnippetsAction: ((Bool) -> Void)?
     public var runAIDiagnosticsAction: ((String) async throws -> String)?
     public var saveAIDiagnosticReportAction: ((String, String) -> Void)?
-    public var emailDiagnosticAuthorAction: (() -> Void)?
+    public var openAIDiagnosticIssueAction: ((URL) -> Bool)?
     public var saveAction: ((AppSettings, String) throws -> Void)?
     public var configPath = ""
     public var openConfigAction: (() -> Void)?
@@ -187,7 +189,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
         language.displayName(interfaceLanguage: settings.interfaceLanguage)
     }
     public var configuredModelProfiles: [ModelProfileOption] {
-        ProviderKind.catalog.flatMap { kind in
+        // Retired templates can still have saved profiles and Keychain credentials.
+        (ProviderKind.catalog + [.anthropic]).flatMap { kind in
             configurationsByProfileID.keys
                 .filter { providerKind(for: $0) == kind && isConfigured(profileID: $0) }
                 .sorted { profileIndex(for: $0, provider: kind) < profileIndex(for: $1, provider: kind) }
@@ -195,7 +198,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         } + configuredCustomProfileIDs.map { profileOption(id: $0, provider: .custom) }
     }
     public var pendingModelProfiles: [ModelProfileOption] {
-        let allKinds = ProviderKind.catalog + [.custom]
+        let allKinds = ProviderKind.catalog + [.anthropic, .custom]
         return allKinds.flatMap { kind in
             configurationsByProfileID.keys
                 .filter { providerKind(for: $0) == kind && !isConfigured(profileID: $0) }
@@ -215,7 +218,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         settings.mode = mode
         workingModeChangeAction?(settings)
     }
-    public func refreshDiagnostics() {
+    @discardableResult public func refreshDiagnostics() -> Bool {
         do {
             let updated = try refreshDiagnosticsAction?() ?? ""
             if diagnosticText != updated {
@@ -228,34 +231,61 @@ public struct ModelProfileOption: Identifiable, Equatable {
             formatter.dateFormat = "HH:mm:ss ZZZZZ"
             let time = formatter.string(from: Date())
             diagnosticStatus = text("Refreshed \(time) · Newest first · Local time", "已刷新 \(time) · 最新在上 · 本地时间")
+            return true
         } catch {
             diagnosticStatus = text("Refresh failed; showing the previous snapshot: \(error.localizedDescription)",
                 "刷新失败，当前仍为上次内容：\(error.localizedDescription)")
+            return false
         }
     }
     public func openDiagnostics() {
         do { try openDiagnosticsAction?() }
         catch { notice = error.localizedDescription; noticeIsError = true }
     }
-    public func runAIDiagnostics(now: Date = Date()) {
-        refreshDiagnostics()
-        let evidence = AIDiagnosticEvidence(jsonLines: diagnosticText, now: now)
-        guard !evidence.isEmpty else {
-            aiDiagnosticGeneration += 1
-            aiDiagnosticTask?.cancel(); aiDiagnosticTask = nil
-            aiDiagnosticRunning = false
-            aiDiagnosticResult = ""; aiDiagnosticEvidence = ""; aiDiagnosticFailureCount = 0
-            aiDiagnosticStatus = text(
-                "No failed cases were found in the past 10 minutes.",
-                "过去 10 分钟内没有找到失败案例。"
-            )
+    public func prepareAIDiagnostics(now: Date = Date()) {
+        guard !aiDiagnosticRunning else { return }
+        aiDiagnosticCandidates = nil; aiDiagnosticSelectedCases = []
+        aiDiagnosticResult = ""; aiDiagnosticEvidence = ""; aiDiagnosticFailureCount = 0
+        guard refreshDiagnostics() else {
+            aiDiagnosticStatus = diagnosticStatus
             return
         }
+        let evidence = AIDiagnosticEvidence(jsonLines: diagnosticText, now: now)
+        aiDiagnosticCandidates = evidence
+        aiDiagnosticSelectedCases = Set(evidence.failures.indices)
+        aiDiagnosticStatus = evidence.isEmpty
+            ? text("No failed cases were found in the past 30 minutes.", "过去 30 分钟内没有找到失败案例。")
+            : text("Found \(evidence.failures.count) failed case(s). Select the cases to analyze.",
+                   "找到 \(evidence.failures.count) 个失败案例，请选择需要分析的案例。")
+    }
+
+    public func selectAIDiagnosticCase(_ index: Int, selected: Bool) {
+        guard !aiDiagnosticRunning, aiDiagnosticCandidates?.failures.indices.contains(index) == true else { return }
+        if selected { aiDiagnosticSelectedCases.insert(index) }
+        else { aiDiagnosticSelectedCases.remove(index) }
+    }
+
+    public func selectAllAIDiagnosticCases() {
+        guard !aiDiagnosticRunning, let candidates = aiDiagnosticCandidates else { return }
+        aiDiagnosticSelectedCases = Set(candidates.failures.indices)
+    }
+
+    public func invertAIDiagnosticSelection() {
+        guard !aiDiagnosticRunning, let candidates = aiDiagnosticCandidates else { return }
+        aiDiagnosticSelectedCases = Set(candidates.failures.indices).subtracting(aiDiagnosticSelectedCases)
+    }
+
+    /// Called only by the explicit authorization button, using the displayed scan.
+    public func runAIDiagnostics() {
+        guard !aiDiagnosticRunning, let candidates = aiDiagnosticCandidates else { return }
+        let evidence = candidates.selecting(aiDiagnosticSelectedCases)
+        guard !evidence.isEmpty else { return }
         do {
             let source = try evidence.jsonText()
             aiDiagnosticGeneration += 1
             let token = aiDiagnosticGeneration
             aiDiagnosticTask?.cancel()
+            let secrets = [apiKey]
             aiDiagnosticRunning = true
             aiDiagnosticResult = ""; aiDiagnosticEvidence = source
             aiDiagnosticFailureCount = evidence.failures.count
@@ -271,7 +301,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
                     guard !Task.isCancelled, token == self.aiDiagnosticGeneration else { return }
                     let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !trimmed.isEmpty else { throw SayoError.invalidResponse }
-                    self.aiDiagnosticResult = trimmed
+                    self.aiDiagnosticResult = DiagnosticRedaction.text(trimmed, secrets: secrets)
                     self.aiDiagnosticStatus = self.text(
                         "AI diagnosis completed from \(evidence.failures.count) failed case(s).",
                         "AI 自诊断已完成，共分析 \(evidence.failures.count) 个失败案例。"
@@ -297,6 +327,30 @@ public struct ModelProfileOption: Identifiable, Equatable {
     public func saveAIDiagnosticReport() {
         guard !aiDiagnosticResult.isEmpty, !aiDiagnosticEvidence.isEmpty else { return }
         saveAIDiagnosticReportAction?(aiDiagnosticResult, aiDiagnosticEvidence)
+    }
+
+    public func openAIDiagnosticIssue() {
+        guard !aiDiagnosticRunning, !aiDiagnosticResult.isEmpty, !aiDiagnosticEvidence.isEmpty else { return }
+        do {
+            let evidence = try JSONDecoder().decode(AIDiagnosticEvidence.self, from: Data(aiDiagnosticEvidence.utf8))
+            let draft = try AIDiagnosticIssueDraft(
+                result: aiDiagnosticResult, evidence: evidence,
+                version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+                build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
+                osVersion: ProcessInfo.processInfo.operatingSystemVersionString
+            )
+            guard openAIDiagnosticIssueAction?(draft.url) == true else {
+                aiDiagnosticStatus = text("Could not open GitHub. Please try again.", "无法打开 GitHub，请重试。")
+                return
+            }
+            aiDiagnosticStatus = draft.isAbbreviated
+                ? text("GitHub draft opened with an abbreviated report. You can save and attach the full result file.",
+                       "已打开 GitHub 草稿。内容较长，草稿包含摘要，可保存完整结果文件后添加为附件。")
+                : text("GitHub draft opened. Review the content there before submitting.", "已打开 GitHub 草稿，请在 GitHub 检查内容后提交。")
+        } catch {
+            aiDiagnosticStatus = text("Could not prepare the GitHub draft: \(error.localizedDescription)",
+                                      "无法准备 GitHub 草稿：\(error.localizedDescription)")
+        }
     }
     public func scheduleAutoSave() {
         autoSaveTask?.cancel()
@@ -371,6 +425,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         scheduleModelRefresh()
     }
     public func addModelProfile(from kind: ProviderKind) {
+        guard ProviderKind.catalog.contains(kind) || kind == .custom else { return }
         guard save() else { return }
         let profileID = nextProfileID(for: kind)
         var configuration = LLMConfiguration()
@@ -394,6 +449,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
             kind = providerKind(for: selection)
         }
         guard let kind else { return nil }
+        guard !isNew || ProviderKind.catalog.contains(kind) || kind == .custom else { return nil }
         let profileID = isNew ? nextProfileID(for: kind) : selection
         var configuration = isNew ? LLMConfiguration() : configurationsByProfileID[profileID] ?? LLMConfiguration()
         configuration.provider = kind
@@ -584,7 +640,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
     }
     private func providerKind(for profileID: String) -> ProviderKind? {
         if customIndex(for: profileID) > 0 { return .custom }
-        return ProviderKind.catalog.first { profileIndex(for: profileID, provider: $0) > 0 }
+        return ProviderKind.allCases.first { profileIndex(for: profileID, provider: $0) > 0 }
     }
     private func profileIndex(for profileID: String, provider: ProviderKind) -> Int {
         guard profileID.hasPrefix(provider.rawValue) else { return 0 }

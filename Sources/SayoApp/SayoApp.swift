@@ -304,7 +304,7 @@ public enum SayoRuntime {
             would help the author investigate. Clearly distinguish facts from hypotheses. Never ask for
             API keys, input text, translated text, or other private content. \(responseLanguage)
             """
-            DiagnosticLog.shared.record("ai_diagnostic_requested", fields: ["windowMinutes": "10"])
+            DiagnosticLog.shared.record("ai_diagnostic_requested", fields: ["windowMinutes": "30"])
             let provider = ConfiguredRewriteProvider(configuration: self.model.settings.llm, apiKey: self.model.apiKey)
             let result = try await provider.rewrite(.init(text: evidence, prompt: prompt,
                 targetLanguage: language.resolved == .simplifiedChinese ? .simplifiedChinese : .english))
@@ -316,7 +316,7 @@ public enum SayoRuntime {
         model.saveAIDiagnosticReportAction = { [weak self] result, evidence in
             self?.exportAIDiagnosticReport(result: result, evidence: evidence)
         }
-        model.emailDiagnosticAuthorAction = { [weak self] in self?.emailDiagnosticAuthor() }
+        model.openAIDiagnosticIssueAction = { NSWorkspace.shared.open($0) }
         if shipsTerminal {
             model.loadCLIShortcutAction = { name in
                 guard let program = CLIEditorProgram(rawValue: name) else { throw SayoError.terminalUnavailable }
@@ -901,7 +901,7 @@ public enum SayoRuntime {
         Sayo AI Diagnosis
         Generated: \(formatter.string(from: Date()))
         Version: \(version) (\(build))
-        Window: past 10 minutes
+        Window: past 30 minutes
 
         This report contains the AI diagnosis and the exact redacted diagnostic evidence sent to the configured model.
         It excludes input text, rewritten text, API keys, prompts, process IDs, and internal invocation identifiers.
@@ -922,7 +922,7 @@ public enum SayoRuntime {
         panel.title = localized("Save AI diagnosis", "保存 AI 自诊断结果")
         panel.canCreateDirectories = true
         guard let settingsWindow else { return }
-        panel.beginSheetModal(for: settingsWindow) { [weak self] response in
+        panel.beginSheetModal(for: settingsWindow.attachedSheet ?? settingsWindow) { [weak self] response in
             guard let self, response == .OK, let url = panel.url else { return }
             do {
                 try report.write(to: url, atomically: true, encoding: .utf8)
@@ -933,30 +933,6 @@ public enum SayoRuntime {
                 self.model.noticeIsError = true
             }
         }
-    }
-
-    private func emailDiagnosticAuthor() {
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = "symeonchen@gmail.com"
-        components.queryItems = [
-            URLQueryItem(name: "subject", value: "Sayo 问题反馈"),
-            URLQueryItem(name: "body", value: """
-            出现问题的 App：
-            操作步骤：
-            预期结果：
-            实际结果：
-
-            如果已经运行 AI 自诊断，请将保存的诊断结果文件作为附件添加到邮件中。
-            """)
-        ]
-        guard let url = components.url, NSWorkspace.shared.open(url) else {
-            model.notice = localized("Could not open the default mail app.", "无法打开默认邮件应用。")
-            model.noticeIsError = true
-            return
-        }
-        model.notice = localized("A new message to the author was opened in your mail app.", "已在邮件应用中打开写给作者的新邮件。")
-        model.noticeIsError = false
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

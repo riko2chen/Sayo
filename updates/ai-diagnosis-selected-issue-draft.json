@@ -1,0 +1,5 @@
+{
+  "bump": "minor",
+  "en": ["AI diagnosis now scans the past 30 minutes, lets you select failed cases before authorizing analysis, and opens a GitHub issue draft with redacted results and evidence."],
+  "zh-CN": ["AI 自诊断现可检测过去 30 分钟内的失败案例，勾选并授权后进行分析，支持查看结果和打开带脱敏信息的 GitHub issue 草稿。"]
+}

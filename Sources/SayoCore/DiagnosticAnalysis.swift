@@ -219,8 +219,8 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
     public var windowMinutes: Int
     public var failures: [Failure]
 
-    public static let defaultWindow: TimeInterval = 10 * 60
-    public static let maximumFailures = 20
+    public static let defaultWindow: TimeInterval = 30 * 60
+    public static let maximumFailures = Int.max
 
     private static let safeFields: Set<String> = [
         "accepted", "actualLength", "actualRange", "alreadyPositioned", "app", "atomicFinish",
@@ -263,11 +263,11 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
         failures = candidates.map { group, failedAt in
             let bundleID = group.events.compactMap { $0.fields["bundleID"] }.first
             let events = group.events.filter { $0.event != "bubble" }.map { event in
-                Event(timestamp: event.timestamp, event: event.event, fields: Self.sanitized(event.fields))
+                Event(timestamp: event.timestamp, event: DiagnosticRedaction.text(event.event), fields: Self.sanitized(event.fields))
             }
             return Failure(
-                application: group.application,
-                bundleID: bundleID,
+                application: DiagnosticRedaction.text(group.application),
+                bundleID: bundleID.map { DiagnosticRedaction.text($0) },
                 failedAt: formatter.string(from: failedAt),
                 events: events
             )
@@ -275,6 +275,13 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
     }
 
     public var isEmpty: Bool { failures.isEmpty }
+
+    /// Selection refers to a frozen scan, so a refresh cannot add unapproved cases.
+    public func selecting(_ indices: Set<Int>) -> Self {
+        var selected = self
+        selected.failures = failures.enumerated().compactMap { indices.contains($0.offset) ? $0.element : nil }
+        return selected
+    }
 
     public func jsonText() throws -> String {
         let encoder = JSONEncoder()
@@ -287,18 +294,17 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
         for (key, value) in fields where safeFields.contains(key) {
             if key == "tree" {
                 result[key] = value.components(separatedBy: " | ").map { node in
-                    var redacted = node
-                    if let classes = redacted.range(of: " classes=["),
-                       let length = redacted.range(of: "] staticLength=", range: classes.upperBound..<redacted.endIndex) {
-                        redacted.replaceSubrange(classes.upperBound..<length.lowerBound, with: "redacted")
-                    }
-                    if let preview = redacted.range(of: " preview=") {
-                        redacted = String(redacted[..<preview.lowerBound]) + " preview=[redacted]"
-                    }
-                    return redacted
+                    // Keep only the structural prefix, never text after a preview separator.
+                    let pattern = #"^([0-9]+:AX[A-Za-z]+) classes=\[[^\]]*\] staticLength=(-?[0-9]+)"#
+                    guard let regex = try? NSRegularExpression(pattern: pattern),
+                          let match = regex.firstMatch(in: node, range: NSRange(node.startIndex..., in: node)),
+                          let role = Range(match.range(at: 1), in: node),
+                          let length = Range(match.range(at: 2), in: node) else { return "[redacted]" }
+                    return "\(node[role]) classes=[redacted] staticLength=\(node[length])"
+                        + (node.contains(" preview=") ? " preview=[redacted]" : "")
                 }.joined(separator: " | ")
             } else {
-                result[key] = value
+                result[key] = DiagnosticRedaction.text(value)
             }
         }
         return result

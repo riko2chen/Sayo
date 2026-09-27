@@ -48,7 +48,10 @@ final class ChromeNanoDetectionTests: XCTestCase {
     }
     private func post(_ url: URL, path: String, body: [String: Any], token: String? = nil,
                       origin: String? = nil) async throws -> (Int, [String: Any]) {
-        var request = URLRequest(url: url.deletingLastPathComponent().appendingPathComponent(path))
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        components.path = "/" + path
+        components.fragment = nil
+        var request = URLRequest(url: components.url!)
         request.httpMethod = "POST"
         request.timeoutInterval = 5
         request.setValue("Bearer \(token ?? fragmentParameters(url)["token"] ?? "")", forHTTPHeaderField: "Authorization")
