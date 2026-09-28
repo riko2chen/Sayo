@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Update the author display name to @Riko in the About section."],
+  "zh-CN": ["将关于作者区域的显示名称更新为 @Riko。"]
+}

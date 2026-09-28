@@ -14,7 +14,7 @@ struct AboutAuthorView: View {
                 Text(t("ABOUT THE AUTHOR", "关于作者"))
                     .font(.system(size: 10, weight: .semibold)).tracking(1.3)
                     .foregroundStyle(SayoStyle.muted)
-                Text("Riko Lab")
+                Text("@Riko")
                     .font(.system(size: 20, weight: .semibold))
                 Text(t("Follow along for new tools and updates, or get in touch by email.",
                        "关注新工具与更新，也欢迎通过邮箱交流。"))
@@ -41,7 +41,7 @@ struct AboutAuthorView: View {
                 contactLink("X", detail: "@rikolabdotcom", symbol: "at",
                             url: "https://x.com/intent/follow?screen_name=rikolabdotcom", identifier: "author-x")
                 contactDivider
-                contactLink(t("Xiaohongshu", "小红书"), detail: t("Follow Riko Lab", "关注 Riko Lab"),
+                contactLink(t("Xiaohongshu", "小红书"), detail: t("Follow @Riko", "关注 @Riko"),
                             symbol: "heart", url: "https://www.xiaohongshu.com/user/profile/67348b6a000000001d02e658",
                             identifier: "author-xiaohongshu")
             }
