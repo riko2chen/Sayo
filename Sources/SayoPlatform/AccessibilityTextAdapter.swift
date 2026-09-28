@@ -80,6 +80,28 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         try captureCurrent()?.context
     }
 
+    /// Identifies an editor even when its text cannot be read through AX. The
+    /// compatibility adapter uses this identity to guard Copy/Paste; an app or
+    /// window alone cannot distinguish two fields containing identical text.
+    func focusedEditorIdentity() -> String? {
+        var capturedEditor = false
+        defer { if !capturedEditor { rememberedEditor = nil } }
+        guard Self.isTrusted,
+              let application = NSWorkspace.shared.frontmostApplication,
+              !TerminalDetector.isTerminal(application.bundleIdentifier),
+              isApplicationAllowed(application.bundleIdentifier)
+        else { return nil }
+        enableAccessibility(for: application)
+        guard let focused: AXUIElement = copiedAttribute(kAXFocusedUIElementAttribute,
+                from: AXUIElementCreateSystemWide(), as: AXUIElement.self),
+              let resolved = resolveFocusedEditor(focused, remembered: rememberedEditor),
+              stringAttribute(kAXSubroleAttribute, of: resolved.element) != kAXSecureTextFieldSubrole as String
+        else { return nil }
+        rememberedEditor = resolved.element
+        capturedEditor = true
+        return identity(for: resolved.element, pid: application.processIdentifier)
+    }
+
     public func replace(_ text: String, in snapshot: TextSnapshot) async throws -> TextReplacementOutcome {
         try await performReplacement(text, in: snapshot, animated: false)
     }
@@ -283,16 +305,7 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         // Chromium/Electron expose text markers only after an assistive client
         // requests their full accessibility tree. Do this on activation, before
         // resolving focus: enabling the tree can replace the focused AX object.
-        if let application = NSWorkspace.shared.frontmostApplication,
-           accessibilityApplicationPID != application.processIdentifier {
-            accessibilityApplicationPID = application.processIdentifier
-            let appElement = AXUIElementCreateApplication(application.processIdentifier)
-            for attribute in ["AXEnhancedUserInterface", "AXManualAccessibility"] {
-                if canSet(attribute, on: appElement) {
-                    AXUIElementSetAttributeValue(appElement, attribute as CFString, kCFBooleanTrue)
-                }
-            }
-        }
+        if let foreground { enableAccessibility(for: foreground) }
         let system = AXUIElementCreateSystemWide()
         guard let focused: AXUIElement = copiedAttribute(
             kAXFocusedUIElementAttribute,
@@ -476,6 +489,17 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         }
         guard let resolved = resolveFocusedEditor(focused, remembered: rememberedEditor) else { return false }
         return CFEqual(resolved.element, expected)
+    }
+
+    private func enableAccessibility(for application: NSRunningApplication) {
+        guard accessibilityApplicationPID != application.processIdentifier else { return }
+        accessibilityApplicationPID = application.processIdentifier
+        let element = AXUIElementCreateApplication(application.processIdentifier)
+        for attribute in ["AXEnhancedUserInterface", "AXManualAccessibility"] {
+            if canSet(attribute, on: element) {
+                AXUIElementSetAttributeValue(element, attribute as CFString, kCFBooleanTrue)
+            }
+        }
     }
 
     private func resolveFocusedEditor(

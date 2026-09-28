@@ -3,17 +3,18 @@ import CoreGraphics
 import Foundation
 import SayoCore
 
-/// Explicit shortcut-only fallback for applications that do not expose their editor through
+/// Explicit shortcut-only fallback for editors whose text cannot be read through
 /// macOS Accessibility. It captures an existing selection with Command-C and later replaces
-/// that same foreground target with Command-V. Unlike the Accessibility path, the resulting
+/// that same identified editor with Command-V. Unlike the Accessibility path, the resulting
 /// text cannot be read back, so this adapter never runs from passive input observation.
 @MainActor
 public final class CopyPasteCompatibilityAdapter {
-    private struct Target: Equatable {
+    struct Target: Equatable {
         let pid: pid_t
         let bundleID: String
         let applicationName: String
         let windowNumber: CGWindowID?
+        let editorID: String
     }
 
     private struct Session {
@@ -24,8 +25,28 @@ public final class CopyPasteCompatibilityAdapter {
     public var replacementInvocationID: String?
     public private(set) var isActive = false
     private var session: Session?
+    private let targetSource: () throws -> Target
+    private let sendCommandKey: (CGKeyCode, pid_t) throws -> Void
+    private let pasteboard: NSPasteboard
+    private let isTrusted: () -> Bool
 
-    public init() {}
+    public init() {
+        let focus = AccessibilityTextAdapter()
+        targetSource = { try Self.currentTarget(focus: focus) }
+        sendCommandKey = Self.postCommandKey
+        pasteboard = .general
+        isTrusted = { AccessibilityTextAdapter.isTrusted }
+    }
+
+    init(targetSource: @escaping () throws -> Target,
+         sendCommandKey: @escaping (CGKeyCode, pid_t) throws -> Void,
+         pasteboard: NSPasteboard,
+         isTrusted: @escaping () -> Bool) {
+        self.targetSource = targetSource
+        self.sendCommandKey = sendCommandKey
+        self.pasteboard = pasteboard
+        self.isTrusted = isTrusted
+    }
 
     /// Only failures that say "the app did not expose a readable editor" may use this fallback.
     /// Secure, excluded, terminal, and Sayo-owned controls must never be bypassed through Copy.
@@ -41,13 +62,14 @@ public final class CopyPasteCompatibilityAdapter {
 
     public func captureCurrentSelection() async throws -> TextContext {
         cancel()
-        guard AccessibilityTextAdapter.isTrusted else { throw SayoError.permissionRequired }
-        let target = try currentTarget()
-        let lease = try SelectionCaptureLease()
+        guard isTrusted() else { throw SayoError.permissionRequired }
+        let target = try targetSource()
+        let lease = try SelectionCaptureLease(pasteboard: pasteboard)
         defer { lease.restore() }
 
         DiagnosticLog.shared.record("compatibility_capture_started", fields: diagnosticFields(for: target))
-        try postCommandKey(8, to: target.pid) // C
+        guard matchesCurrentTarget(target) else { throw SayoError.staleInput }
+        try sendCommandKey(8, target.pid) // C
         DiagnosticLog.shared.record("compatibility_copy_sent", fields: diagnosticFields(for: target))
 
         var selectedText: String?
@@ -101,9 +123,10 @@ public final class CopyPasteCompatibilityAdapter {
               snapshot.matches(session.context)
         else { throw SayoError.staleInput }
 
-        let lease = try PasteboardLease(text: text)
+        let lease = try PasteboardLease(text: text, pasteboard: pasteboard)
         defer { lease.restore() }
-        try postCommandKey(9, to: session.target.pid) // V
+        guard matchesCurrentTarget(session.target) else { throw SayoError.staleInput }
+        try sendCommandKey(9, session.target.pid) // V
         DiagnosticLog.shared.record("compatibility_paste_sent", fields:
             diagnosticFields(for: session.target).merging([
                 "invocationID": replacementInvocationID ?? "unknown",
@@ -127,29 +150,26 @@ public final class CopyPasteCompatibilityAdapter {
         replacementInvocationID = nil
     }
 
-    private func currentTarget() throws -> Target {
+    private static func currentTarget(focus: AccessibilityTextAdapter) throws -> Target {
         guard let application = NSWorkspace.shared.frontmostApplication,
               application.processIdentifier != ProcessInfo.processInfo.processIdentifier,
               let bundleID = application.bundleIdentifier
         else { throw SayoError.noInput }
+        guard let editorID = focus.focusedEditorIdentity() else { throw SayoError.unsupportedInput }
         return Target(
             pid: application.processIdentifier,
             bundleID: bundleID,
             applicationName: application.localizedName ?? "",
-            windowNumber: frontWindowNumber(for: application.processIdentifier)
+            windowNumber: frontWindowNumber(for: application.processIdentifier),
+            editorID: editorID
         )
     }
 
     private func matchesCurrentTarget(_ expected: Target) -> Bool {
-        guard let application = NSWorkspace.shared.frontmostApplication,
-              application.processIdentifier == expected.pid,
-              application.bundleIdentifier == expected.bundleID
-        else { return false }
-        guard let expectedWindow = expected.windowNumber else { return true }
-        return frontWindowNumber(for: expected.pid) == expectedWindow
+        (try? targetSource()) == expected
     }
 
-    private func frontWindowNumber(for pid: pid_t) -> CGWindowID? {
+    private static func frontWindowNumber(for pid: pid_t) -> CGWindowID? {
         guard let windows = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
             kCGNullWindowID
@@ -164,7 +184,7 @@ public final class CopyPasteCompatibilityAdapter {
         return nil
     }
 
-    private func postCommandKey(_ key: CGKeyCode, to pid: pid_t) throws {
+    private static func postCommandKey(_ key: CGKeyCode, _ pid: pid_t) throws {
         guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
