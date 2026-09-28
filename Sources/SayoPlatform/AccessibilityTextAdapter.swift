@@ -35,6 +35,7 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
 
     private var identities: [IdentityEntry] = []
     private var accessibilityApplicationPID: pid_t?
+    private var rememberedEditor: AXUIElement?
     private let geometryLogger = Logger(subsystem: "com.sayo.app", category: "caret")
     private let inputLogger = Logger(subsystem: "com.sayo.app", category: "input")
     private var lastGeometryLog = ""
@@ -122,6 +123,11 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
 
             let element = initial.element
             let isWebInput = isWebTextInput(element)
+            // Autocomplete can rebuild its popup and briefly expose mismatched
+            // text/selection between animation frames. Keep the verified editor
+            // target, but apply one complete replacement and verify it normally.
+            let hasAutocompletePopup = lastInputDiagnosticFields["focusResolution"] == "associated_editor_popup"
+                || (isWebInput && copiedAttribute("AXHasPopup", from: element, as: NSNumber.self)?.boolValue == true)
             let usesParagraphMarkers = draftReader.supports(element)
             let logger = Logger(subsystem: "com.sayo.app", category: "replacement")
             let read: () throws -> TextReplacementTransaction.State = { [self] in
@@ -187,7 +193,10 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
             )
             logger.info("replacement started webInput=\(isWebInput, privacy: .public)")
             let transaction = TextReplacementTransaction(access: access, trace: trace)
-            let outcome = animated
+            if animated && hasAutocompletePopup {
+                trace("replacement_animation_fallback", ["reason": "autocomplete_popup"])
+            }
+            let outcome = animated && !hasAutocompletePopup
                 ? try await transaction.replaceAnimated(text, snapshot: snapshot)
                 : try await transaction.replace(text, snapshot: snapshot)
             logger.info("replacement verified insertedAtCaret=\(outcome == .insertedAtCaret, privacy: .public)")
@@ -263,6 +272,8 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
     }
 
     private func captureCurrent() throws -> Capture? {
+        var capturedEditor = false
+        defer { if !capturedEditor { rememberedEditor = nil } }
         let foreground = NSWorkspace.shared.frontmostApplication
         var diagnostics = ["app": foreground?.localizedName ?? "unknown",
             "bundleID": foreground?.bundleIdentifier ?? "unknown", "reason": "permission_required"]
@@ -283,7 +294,7 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
             }
         }
         let system = AXUIElementCreateSystemWide()
-        guard let element: AXUIElement = copiedAttribute(
+        guard let focused: AXUIElement = copiedAttribute(
             kAXFocusedUIElementAttribute,
             from: system,
             as: AXUIElement.self
@@ -293,7 +304,8 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         }
 
         var pid: pid_t = 0
-        guard AXUIElementGetPid(element, &pid) == .success,
+        guard AXUIElementGetPid(focused, &pid) == .success,
+              foreground?.processIdentifier == pid,
               let application = NSRunningApplication(processIdentifier: pid)
         else {
             diagnostics["reason"] = "application_unavailable"
@@ -308,27 +320,27 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
             diagnostics["reason"] = "terminal_or_excluded_app"
             return nil
         }
-        if pid == ProcessInfo.processInfo.processIdentifier && isOwnSettings(element) {
+        if pid == ProcessInfo.processInfo.processIdentifier && isOwnSettings(focused) {
             diagnostics["reason"] = "sayo_settings"
             return nil
         }
 
-        guard let role = stringAttribute(kAXRoleAttribute, of: element) else {
+        guard let focusedRole = stringAttribute(kAXRoleAttribute, of: focused) else {
             diagnostics["reason"] = "role_unavailable"
             return nil
         }
-        diagnostics["role"] = role
-        let supportedRoles = [
-            kAXTextFieldRole as String,
-            kAXTextAreaRole as String,
-            kAXComboBoxRole as String
-        ]
-        guard supportedRoles.contains(role) else {
+        diagnostics["focusedRole"] = focusedRole
+        diagnostics["role"] = focusedRole
+        guard let resolved = resolveFocusedEditor(focused, remembered: rememberedEditor) else {
             diagnostics["reason"] = "unsupported_role"
             // Never inspect AXValue on arbitrary roles: many non-text controls
             // expose values with unrelated types and semantics.
             return nil
         }
+        let element = resolved.element
+        let role = stringAttribute(kAXRoleAttribute, of: element) ?? focusedRole
+        diagnostics["role"] = role
+        diagnostics["focusResolution"] = resolved.source
 
         if stringAttribute(kAXSubroleAttribute, of: element) == kAXSecureTextFieldSubrole as String {
             diagnostics["reason"] = "secure_input_skipped"
@@ -423,6 +435,8 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
             isSensitive: false
         )
         diagnostics["caretAvailable"] = String(context.caret != nil)
+        rememberedEditor = element
+        capturedEditor = true
         return Capture(element: element, pid: pid, context: context)
     }
 
@@ -460,7 +474,75 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         ) else {
             return false
         }
-        return CFEqual(focused, expected)
+        guard let resolved = resolveFocusedEditor(focused, remembered: rememberedEditor) else { return false }
+        return CFEqual(resolved.element, expected)
+    }
+
+    private func resolveFocusedEditor(
+        _ focused: AXUIElement,
+        remembered: AXUIElement?
+    ) -> FocusedTextInputResolver<AXUIElement>.Resolution? {
+        guard let application = NSWorkspace.shared.frontmostApplication else { return nil }
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(focused, &pid) == .success,
+              pid == application.processIdentifier else { return nil }
+        let appElement = AXUIElementCreateApplication(pid)
+        let window: AXUIElement? = copiedAttribute(kAXFocusedWindowAttribute, from: appElement, as: AXUIElement.self)
+        let resolver = FocusedTextInputResolver<AXUIElement>(
+            role: { self.stringAttribute(kAXRoleAttribute, of: $0) },
+            parent: { self.copiedAttribute(kAXParentAttribute, from: $0, as: AXUIElement.self) },
+            linkedElements: {
+                (self.copiedAttribute("AXLinkedUIElements", from: $0, as: [AXUIElement].self) ?? [])
+                    + (self.copiedAttribute("AXOwns", from: $0, as: [AXUIElement].self) ?? [])
+            },
+            selectionBelongsToEditor: { self.documentSelectionBelongs(to: $0) },
+            sameContext: { first, second in
+                var firstPID: pid_t = 0, secondPID: pid_t = 0
+                guard let window,
+                      AXUIElementGetPid(first, &firstPID) == .success, firstPID == pid,
+                      AXUIElementGetPid(second, &secondPID) == .success, secondPID == pid,
+                      let firstWindow: AXUIElement = self.copiedAttribute(kAXWindowAttribute, from: first, as: AXUIElement.self),
+                      let secondWindow: AXUIElement = self.copiedAttribute(kAXWindowAttribute, from: second, as: AXUIElement.self)
+                else { return false }
+                return CFEqual(firstWindow, window) && CFEqual(secondWindow, window)
+            },
+            equal: { CFEqual($0, $1) }
+        )
+        return resolver.resolve(focused: focused, remembered: remembered)
+    }
+
+    /// A valid range on an unfocused field can be stale. Instead, resolve both
+    /// endpoints of the document's current selection back to the remembered
+    /// editor. This also disambiguates inputs that share a suggestion popup.
+    private func documentSelectionBelongs(to editor: AXUIElement) -> Bool {
+        var ancestor: AXUIElement? = editor
+        for _ in 0..<24 {
+            guard let current = ancestor else { return false }
+            if stringAttribute(kAXRoleAttribute, of: current) == "AXWebArea" {
+                var raw: CFTypeRef?
+                guard AXUIElementCopyAttributeValue(current, "AXSelectedTextMarkerRange" as CFString, &raw) == .success,
+                      let raw, CFGetTypeID(raw) == AXTextMarkerRangeGetTypeID() else { return false }
+                let range = unsafeBitCast(raw, to: AXTextMarkerRange.self)
+                for marker in [AXTextMarkerRangeCopyStartMarker(range), AXTextMarkerRangeCopyEndMarker(range)] {
+                    var owner: CFTypeRef?
+                    guard AXUIElementCopyParameterizedAttributeValue(current, "AXUIElementForTextMarker" as CFString,
+                                                                      marker, &owner) == .success,
+                          let owner, CFGetTypeID(owner) == AXUIElementGetTypeID() else { return false }
+                    var node: AXUIElement? = unsafeBitCast(owner, to: AXUIElement.self)
+                    var belongs = false
+                    for _ in 0..<24 {
+                        guard let candidate = node else { break }
+                        if CFEqual(candidate, editor) { belongs = true; break }
+                        if CFEqual(candidate, current) { break }
+                        node = copiedAttribute(kAXParentAttribute, from: candidate, as: AXUIElement.self)
+                    }
+                    guard belongs else { return false }
+                }
+                return true
+            }
+            ancestor = copiedAttribute(kAXParentAttribute, from: current, as: AXUIElement.self)
+        }
+        return false
     }
 
     private func identity(for element: AXUIElement, pid: pid_t) -> String {
