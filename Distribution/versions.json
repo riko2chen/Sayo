@@ -12,5 +12,14 @@
       "release-apple-account-notarization",
       "remove-anthropic-model-template"
     ]
+  },
+  {
+    "version": "0.2.1",
+    "updates": [
+      "author-display-name-riko",
+      "modern-author-contact-list",
+      "resolve-editable-focus-20260928",
+      "verify-compatibility-editor-20260928"
+    ]
   }
 ]

@@ -1,5 +1,21 @@
 # Sayo update notes
 
+## 0.2.1
+
+### English
+
+- Update the author display name to @Riko in the About section.
+- Refresh the About the Author section with consistent contact rows, clearer link details, and email copy feedback.
+- Keep the verified editing target when autocomplete suggestions take accessibility focus, and replace text in one verified step to avoid interruptions from refreshing suggestions.
+- Copy/paste compatibility now verifies the original editor before writing back and stops when the editor cannot be identified.
+
+### 简体中文
+
+- 将关于作者区域的显示名称更新为 @Riko。
+- 重新设计关于作者区域，统一联系入口的样式与交互，清晰展示链接信息，并增加邮箱复制反馈。
+- 候选建议接管无障碍焦点时仍保留经核验的输入目标，并一次性替换及回读确认，避免候选项刷新打断逐字写入。
+- 复制/粘贴兼容模式现在会在写回前核验原输入框，无法确认输入框身份时停止操作。
+
 ## 0.2.0
 
 ### English
