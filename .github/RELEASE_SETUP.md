@@ -42,6 +42,24 @@ Only one release runs at a time. GitHub concurrency retains at most one pending 
 
 The app reads `https://github.com/riko2chen/Sayo/releases/latest/download/appcast.xml`. It will remain unavailable until the first complete release is published. After initial publication, perform a real old-version-to-new-version update acceptance test, including download, signature verification, installation, and restart. Local fixture tests do not prove that online path.
 
+## Homebrew tap
+
+The public tap is `riko2chen/homebrew-sayo`; users install with `brew install --cask riko2chen/sayo/sayo`. The tap follows published stable GitHub Releases, so merging a version into main alone does not update Homebrew.
+
+Prepare a new local tap checkout from the reviewed sources:
+
+```sh
+python3 scripts/prepare_homebrew_tap.py --output .build/homebrew-sayo
+python3 .build/homebrew-sayo/update_cask.py
+python3 -m unittest discover -s .build/homebrew-sayo/tests -v
+```
+
+The first command exports an explicit list of public files into a new directory. The second reads the latest public release, checks the appcast and checksum manifest, downloads and verifies the DMG, and creates `Casks/sayo.rb`. Neither command pushes or creates a repository. Publish that directory as `riko2chen/homebrew-sayo` only with maintainer authorization; use its own Git history, never the source checkout's private archive.
+
+The tap includes an hourly `Sync latest Sayo release` workflow, also available through **Run workflow** for immediate synchronization after a release. GitHub can delay scheduled runs and disable schedules in inactive public repositories. The workflow uses only the tap's `GITHUB_TOKEN` with Contents write permission. It needs no cross-repository token or signing credentials. Unchanged releases create no commits; downgrades and changes to an existing release's checksum fail without replacing the current Cask.
+
+When changing the updater or Cask template, export to a fresh directory and update the corresponding files in the tap through a reviewed commit. Tests under `Distribution/homebrew/tests` run both in this repository's release test suite and in the exported tap.
+
 ## Local archive protection
 
 Run `python3 scripts/install_local_guards.py` to install the local push guard. In a migration checkout, archive metadata and a push lock live in Git's common directory, outside tracked source. The guard rejects local/private history even if aliased as main or a tag. It also rejects internal files in public ancestry. It never removes an existing push lock. Do not use `--no-verify`, `--all`, or `--mirror` to bypass archive protection.
