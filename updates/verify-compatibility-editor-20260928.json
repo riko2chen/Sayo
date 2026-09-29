@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Copy/paste compatibility now verifies the original editor before writing back and stops when the editor cannot be identified."],
+  "zh-CN": ["复制/粘贴兼容模式现在会在写回前核验原输入框，无法确认输入框身份时停止操作。"]
+}

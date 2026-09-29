@@ -5,7 +5,6 @@ import SayoCore
 public struct SettingsView: View {
     @ObservedObject var model: AppViewModel
     @State private var page: SettingsPage = .general
-    @State private var showingAuthorEmail = false
     @State private var promptDestination: TranslationDestination = .primary
     public init(model: AppViewModel) { self.model = model }
     public var body: some View {
@@ -488,56 +487,8 @@ public struct SettingsView: View {
                     identifier: "about-question-cost"
                 )
             }
-            SayoCard {
-                Text(t("ABOUT THE AUTHOR", "关于作者"))
-                    .font(.system(size: 10, weight: .semibold)).tracking(1.3)
-                Text(t("Follow Riko Lab for new tools and updates, or get in touch by email.",
-                       "关注 Riko Lab，获取新工具和更新；也可以通过邮箱联系作者。"))
-                    .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
-                Button { showingAuthorEmail = true } label: {
-                    authorContactRow(t("Email the author", "联系作者"), symbol: "envelope", trailingSymbol: "chevron.right")
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("author-email")
-                .popover(isPresented: $showingAuthorEmail, arrowEdge: .top) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(t("Email the author", "联系作者"))
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("symeonchen@gmail.com")
-                            .font(.system(size: 12, design: .monospaced))
-                            .textSelection(.enabled)
-                            .accessibilityIdentifier("author-email-address")
-                        Button(t("Copy email address", "复制邮箱地址")) {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString("symeonchen@gmail.com", forType: .string)
-                        }
-                        .accessibilityIdentifier("copy-author-email")
-                    }
-                    .padding(18)
-                }
-                Divider()
-                authorLink(t("Project homepage", "项目主页"), symbol: "globe", url: "https://sayo.rikolab.com/", identifier: "author-homepage")
-                authorLink(t("Source code · GitHub", "源代码 · GitHub"), symbol: "chevron.left.forwardslash.chevron.right", url: "https://github.com/riko2chen/Sayo", identifier: "author-github")
-                authorLink(t("X · Follow", "X · 关注"), symbol: "at", url: "https://x.com/intent/follow?screen_name=rikolabdotcom", identifier: "author-x")
-                authorLink(t("Xiaohongshu · Follow", "小红书 · 关注"), symbol: "heart", url: "https://www.xiaohongshu.com/user/profile/67348b6a000000001d02e658", identifier: "author-xiaohongshu")
-            }
+            AboutAuthorView(language: model.settings.interfaceLanguage)
         }
-    }
-    private func authorContactRow(_ title: String, symbol: String, trailingSymbol: String = "arrow.up.right") -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: symbol).frame(width: 18)
-            Text(title)
-            Spacer()
-            Image(systemName: trailingSymbol).font(.system(size: 10, weight: .semibold))
-        }
-        .font(.system(size: 13))
-        .contentShape(Rectangle())
-    }
-    private func authorLink(_ title: String, symbol: String, url: String, identifier: String) -> some View {
-        Link(destination: URL(string: url)!) {
-            authorContactRow(title, symbol: symbol)
-        }
-        .accessibilityIdentifier(identifier)
     }
     private func aboutQuestion(_ question: String, answer: String, identifier: String) -> some View {
         DisclosureGroup {

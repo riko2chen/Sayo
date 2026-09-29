@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Refresh the About the Author section with consistent contact rows, clearer link details, and email copy feedback."],
+  "zh-CN": ["重新设计关于作者区域，统一联系入口的样式与交互，清晰展示链接信息，并增加邮箱复制反馈。"]
+}

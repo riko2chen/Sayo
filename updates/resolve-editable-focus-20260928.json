@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Keep the verified editing target when autocomplete suggestions take accessibility focus, and replace text in one verified step to avoid interruptions from refreshing suggestions."],
+  "zh-CN": ["候选建议接管无障碍焦点时仍保留经核验的输入目标，并一次性替换及回读确认，避免候选项刷新打断逐字写入。"]
+}

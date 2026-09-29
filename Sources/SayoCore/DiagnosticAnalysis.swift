@@ -226,7 +226,7 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
         "accepted", "actualLength", "actualRange", "alreadyPositioned", "app", "atomicFinish",
         "attribute", "bundleID", "canWriteSelected", "canWriteValue", "caretAvailable",
         "characterCount", "elapsedMs", "error", "expectedLength", "expanded",
-        "explicitPlaceholderLength", "filteredPlaceholder", "frame", "frames",
+        "explicitPlaceholderLength", "filteredPlaceholder", "focusResolution", "focusedRole", "frame", "frames",
         "inferredPlaceholderLength", "insertionRange", "length", "method", "mode",
         "operationElapsedMs", "originalLength", "outcome", "phase", "placeholderContainmentMatch",
         "placeholderMatchesValue", "placeholderSource", "prefersPaste", "range", "rawLength",
