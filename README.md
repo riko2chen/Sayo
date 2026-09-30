@@ -8,13 +8,38 @@
 
 An open-source, native macOS writing assistant for translating, polishing, and adjusting the tone of text right where you type. Works with Terminal and the Codex TUI, as well as third-party apps such as Codex desktop and Chrome.
 
-## Download
-
-**[Get Sayo on GitHub Releases](https://github.com/riko2chen/Sayo/releases)** · [Website](https://sayo.rikolab.com/)
+## Installation
 
 Requires **macOS 14 or later**. Supports Apple Silicon and Intel Macs.
 
-Move `Sayo.app` to Applications and open it. Follow the setup instructions to grant Accessibility permission and configure your model service.
+### Homebrew
+
+With [Homebrew](https://brew.sh/) installed, run:
+
+```sh
+brew install --cask riko2chen/sayo/sayo
+```
+
+This installs Sayo in Applications and adds the `sayo` command.
+
+To update through Homebrew:
+
+```sh
+brew update
+brew upgrade --cask --greedy riko2chen/sayo/sayo
+```
+
+You can also check for updates inside Sayo. To uninstall, run `brew uninstall --cask riko2chen/sayo/sayo`.
+
+### Download the DMG
+
+**[Get Sayo on GitHub Releases](https://github.com/riko2chen/Sayo/releases)** · [Website](https://sayo.rikolab.com/)
+
+Move `Sayo.app` to Applications.
+
+### First launch
+
+Open Sayo and follow the setup instructions to grant Accessibility permission and configure your model service.
 
 Press `Option+E` in another app's input field to get started.
 

@@ -157,7 +157,7 @@ def prepare(options):
 
 正式发行准备完成后，由维护者手动创建 `{repository}` 的 GitHub Release，tag 使用 `{release['tag']}`，并上传 `{release['filename']}`、`appcast.xml` 和 `SHA256SUMS`。该 Release 需标记为 latest（非 draft / prerelease），供应用读取固定更新地址。
 
-将 `homebrew-tap/Casks/sayo.rb` 放入自己公开的 `homebrew-sayo` 仓库的 `Casks/sayo.rb`。用户届时可通过 `brew install --cask OWNER/sayo/sayo` 安装，也可在应用内检查更新。Homebrew 的 `auto_updates true` 表示应用有自更新能力；要让 Homebrew 也检查此类应用，使用 `brew upgrade --cask --greedy sayo`。
+`homebrew-tap/Casks/sayo.rb` 是该安装包对应的 Cask。官方 `riko2chen/homebrew-sayo` Tap 会在正式 Release 发布后，下载并校验安装包，再同步 Cask。用户可通过 `brew install --cask riko2chen/sayo/sayo` 安装，使用 `brew upgrade --cask --greedy riko2chen/sayo/sayo` 更新，也可在应用内检查更新。Tap 的初始化和手动同步方式见源码仓库的 `.github/RELEASE_SETUP.md`。
 
 本地生成命令没有上传、创建 Release、推送仓库或安装 Homebrew 软件的动作。不要把私钥或证书放入这些产物中。
 """)

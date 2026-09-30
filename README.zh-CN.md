@@ -8,13 +8,38 @@
 
 开源的原生 macOS 写作助手，在当前输入框里完成翻译、润色与语气调整。支持 Terminal 与 codex TUI，支持 codex desktop、Chrome 等第三方软件。
 
-## 下载
-
-**[前往 GitHub Releases](https://github.com/riko2chen/Sayo/releases)** · [项目主页](https://sayo.rikolab.com/)
+## 安装
 
 支持 **macOS 14 及以上版本**，适用于 Apple Silicon 和 Intel Mac。
 
-获得 `Sayo.app` 后，将其放入「应用程序」并打开，按引导授予辅助功能权限、配置模型服务。
+### Homebrew 安装
+
+安装 [Homebrew](https://brew.sh/) 后，在终端运行：
+
+```sh
+brew install --cask riko2chen/sayo/sayo
+```
+
+该命令会将 Sayo 安装到「应用程序」，并添加 `sayo` 命令。
+
+通过 Homebrew 更新：
+
+```sh
+brew update
+brew upgrade --cask --greedy riko2chen/sayo/sayo
+```
+
+也可以在 Sayo 内检查更新。卸载时运行 `brew uninstall --cask riko2chen/sayo/sayo`。
+
+### 下载 DMG
+
+**[前往 GitHub Releases](https://github.com/riko2chen/Sayo/releases)** · [项目主页](https://sayo.rikolab.com/)
+
+获得 `Sayo.app` 后，将其放入「应用程序」。
+
+### 首次启动
+
+打开 Sayo，按引导授予辅助功能权限并配置模型服务。
 
 在其他应用的输入框中按 `option+E` 即可开始使用。
 
