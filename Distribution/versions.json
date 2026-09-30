@@ -21,5 +21,11 @@
       "resolve-editable-focus-20260928",
       "verify-compatibility-editor-20260928"
     ]
+  },
+  {
+    "version": "0.2.2",
+    "updates": [
+      "homebrew-installation-20260929"
+    ]
   }
 ]

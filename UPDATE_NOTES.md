@@ -1,5 +1,15 @@
 # Sayo update notes
 
+## 0.2.2
+
+### English
+
+- Add Homebrew installation with a Cask that follows verified public releases, plus installation and update instructions in both READMEs.
+
+### 简体中文
+
+- 新增 Homebrew 安装支持，Cask 自动跟随经校验的正式发布版本，并在中英文 README 中补充安装和更新说明。
+
 ## 0.2.1
 
 ### English
