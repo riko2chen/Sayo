@@ -1164,6 +1164,7 @@ public enum TerminalDetector {
         "com.apple.Terminal",
         "com.googlecode.iterm2",
         "com.mitchellh.ghostty",
+        "io.appmakes.otty",
         "dev.warp.Warp",
         "dev.warp.Warp-Stable",
         "com.github.wez.wezterm",

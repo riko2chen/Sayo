@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Recognize Otty as a terminal so Sayo shortcuts open the active CLI's external editor instead of replacing terminal screen text."],
+  "zh-CN": ["识别 Otty 终端，让 Sayo 快捷键调用当前 CLI 的外部编辑器，避免按普通输入框处理终端屏幕文本。"]
+}
