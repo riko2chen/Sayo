@@ -357,6 +357,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// Explicit opt-in for apps that do not expose a readable Accessibility text input.
     /// Shortcut invocations may capture the current selection with Copy and apply with Paste.
     public var copyPasteCompatibilityEnabled = false
+    /// Animate whole-input replacements when the input supports verified animated writes.
+    public var inputAnimationEnabled = true
     public var developerMode = false
     public var retainDiagnosticLogs = true
     public var launchAtLogin = false
@@ -477,7 +479,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case mode, llm, prompt, interfaceLanguage, targetLanguage
         case secondaryTargetLanguage, secondaryPrompt, secondaryShortcut
         case invokeShortcut, copyShortcut, replaceShortcut
-        case copyPasteCompatibilityEnabled
+        case copyPasteCompatibilityEnabled, inputAnimationEnabled
         case automaticallyChecksForUpdates, automaticallyDownloadsUpdates
         case shortcut
         case developerMode, retainDiagnosticLogs, launchAtLogin, statusBarIconStyle, onboardingCompleted, applicationFilterMode, applicationBundleIDs
@@ -526,6 +528,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
             replaceShortcut = legacyShortcut ?? .controlG
         }
         copyPasteCompatibilityEnabled = try container.decodeIfPresent(Bool.self, forKey: .copyPasteCompatibilityEnabled) ?? false
+        inputAnimationEnabled = try container.decodeIfPresent(Bool.self, forKey: .inputAnimationEnabled) ?? true
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         automaticallyChecksForUpdates = try container.decodeIfPresent(Bool.self, forKey: .automaticallyChecksForUpdates) ?? true
         automaticallyDownloadsUpdates = try container.decodeIfPresent(Bool.self, forKey: .automaticallyDownloadsUpdates) ?? true
@@ -557,6 +560,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         try container.encodeIfPresent(copyShortcut, forKey: .copyShortcut)
         try container.encode(replaceShortcut, forKey: .replaceShortcut)
         try container.encode(copyPasteCompatibilityEnabled, forKey: .copyPasteCompatibilityEnabled)
+        try container.encode(inputAnimationEnabled, forKey: .inputAnimationEnabled)
         try container.encode(developerMode, forKey: .developerMode)
         try container.encode(retainDiagnosticLogs, forKey: .retainDiagnosticLogs)
         try container.encode(launchAtLogin, forKey: .launchAtLogin)

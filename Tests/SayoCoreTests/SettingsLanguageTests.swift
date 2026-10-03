@@ -200,6 +200,17 @@ final class SettingsLanguageTests: XCTestCase {
         XCTAssertEqual(decoded.llm.model, "example-model")
     }
 
+    func testInputAnimationPreferenceRoundTripsAndPreservesExistingDefault() throws {
+        XCTAssertTrue(AppSettings().inputAnimationEnabled)
+        XCTAssertTrue(try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8)).inputAnimationEnabled)
+        for enabled in [false, true] {
+            var settings = AppSettings()
+            settings.inputAnimationEnabled = enabled
+            let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+            XCTAssertEqual(decoded.inputAnimationEnabled, enabled)
+        }
+    }
+
     func testVersionTwoModelSelectionMigratesToAProfileIdentifier() throws {
         let data = Data(#"{"schemaVersion":2,"llm":{"provider":"deepSeek","baseURL":"https://api.deepseek.com/v1","model":"deepseek-chat"}}"#.utf8)
 

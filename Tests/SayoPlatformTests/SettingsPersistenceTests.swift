@@ -36,6 +36,7 @@ import SayoCore
         settings.copyShortcut = Shortcut(keyCode: 8, command: true)
         settings.replaceShortcut = nil
         settings.copyPasteCompatibilityEnabled = true
+        settings.inputAnimationEnabled = false
         settings.developerMode = true
         settings.retainDiagnosticLogs = false
         settings.launchAtLogin = true
