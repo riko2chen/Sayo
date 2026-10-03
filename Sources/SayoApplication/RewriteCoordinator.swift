@@ -195,7 +195,7 @@ public struct BubbleState: Equatable, Sendable {
                 }
                 let outcome: TextReplacementOutcome
                 // The animated replacer falls back to an instant write when Reduce Motion is on.
-                if captured.context.selection.length == 0,
+                if self.settings.inputAnimationEnabled, captured.context.selection.length == 0,
                    let animatedReplacer = self.replacer as? any AnimatedTextReplacer {
                     outcome = try await animatedReplacer.replaceAnimated(text, in: captured)
                 } else {

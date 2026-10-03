@@ -251,8 +251,9 @@ private actor ControlledProvider: RewriteProvider {
         await eventually { await clock.count == 1 }; await clock.advance()
         await eventually { sut.state.phase == .hidden }
     }
-    func testExperimentalInputAnimationUsesAnimatedReplacer() async {
+    func testEnabledInputAnimationUsesAnimatedReplacer() async {
         var settings = AppSettings()
+        settings.inputAnimationEnabled = true
         settings.mode = .silent
         let input = MemoryInput(), provider = ControlledProvider(), clock = ControlledClock()
         let sut = RewriteCoordinator(settings: settings, source: input, replacer: input, provider: provider, clock: clock)
@@ -264,6 +265,23 @@ private actor ControlledProvider: RewriteProvider {
 
         XCTAssertEqual(input.animatedReplacementCount, 1)
         XCTAssertEqual(input.context?.text, "I like this product.")
+        await eventually { await clock.count == 1 }
+        await clock.advance()
+    }
+    func testDisabledInputAnimationUsesInstantReplacer() async {
+        var settings = AppSettings()
+        settings.mode = .silent
+        settings.inputAnimationEnabled = false
+        let input = MemoryInput(), provider = ControlledProvider(), clock = ControlledClock()
+        let sut = RewriteCoordinator(settings: settings, source: input, replacer: input, provider: provider, clock: clock)
+
+        sut.shortcut()
+        await eventually { await provider.count == 1 }
+        await provider.complete("I like this product.")
+        await eventually { sut.state.phase == .replaced }
+
+        XCTAssertEqual(input.animatedReplacementCount, 0)
+        XCTAssertEqual(input.replacements, ["I like this product."])
         await eventually { await clock.count == 1 }
         await clock.advance()
     }

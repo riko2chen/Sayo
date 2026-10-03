@@ -3,6 +3,29 @@ import SayoCore
 @testable import SayoPlatform
 
 final class TerminalForegroundProcessDetectorTests: XCTestCase {
+    func testDiagnosticEvidenceExplainsTitleTTYAndAmbiguousRoutesWithoutText() {
+        let records = TerminalForegroundProcessDetector.parseProcessSnapshot("""
+          100     1   100   100 ??       Otty /Applications/Otty.app/Contents/MacOS/Otty
+          101   100   101   201 ttys000  zsh -zsh
+          201   101   201   201 ttys000  claude /usr/local/bin/claude private-argument
+          102   100   102   301 ttys001  zsh -zsh
+          301   102   301   301 ttys001  codex /usr/local/bin/codex
+        """)
+        let titled = TerminalForegroundProcessDetector.detectWithDiagnostics(records: records, terminalPID: 100,
+            focusedTTY: nil, focusedText: "private text", focusedTitle: "Claude Code private-title")
+        XCTAssertEqual(titled.route, .cli(.init(program: .claude, tty: "ttys000")))
+        XCTAssertEqual(titled.fields["detectionMethod"], "focused_title")
+        XCTAssertEqual(titled.fields["program"], "claude")
+        XCTAssertEqual(titled.fields["candidateCount"], "2")
+        XCTAssertEqual(titled.fields["sessionCount"], "2")
+        XCTAssertFalse(titled.fields.values.contains { $0.contains("private") })
+        let tty = TerminalForegroundProcessDetector.detectWithDiagnostics(records: records, terminalPID: 100, focusedTTY: "ttys001")
+        XCTAssertEqual(tty.fields["detectionMethod"], "focused_tty")
+        XCTAssertEqual(tty.fields["program"], "codex")
+        let ambiguous = TerminalForegroundProcessDetector.detectWithDiagnostics(records: records, terminalPID: 100, focusedTTY: nil)
+        XCTAssertEqual(ambiguous.route, .unknown)
+        XCTAssertEqual(ambiguous.fields["detectionMethod"], "ambiguous_sessions")
+    }
     func testRoutesFocusedGhosttyTTYToCodexWhileClaudeRunsInAnotherTab() {
         let records = TerminalForegroundProcessDetector.parseProcessSnapshot("""
           100     1   100   100 ??       Ghostty /Applications/Ghostty.app/Contents/MacOS/ghostty

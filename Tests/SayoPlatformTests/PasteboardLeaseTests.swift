@@ -70,7 +70,7 @@ final class PasteboardLeaseTests: XCTestCase {
                        "value_or_selection_unavailable", "input_not_writable"] {
             XCTAssertTrue(CopyPasteCompatibilityAdapter.shouldAttemptFallback(after: ["reason": reason]))
         }
-        for reason in ["secure_input_skipped", "terminal_or_excluded_app", "sayo_settings",
+        for reason in ["secure_input_skipped", "terminal_or_excluded_app", "terminal_detected", "excluded_app", "sayo_settings",
                        "permission_required", "value_preserved"] {
             XCTAssertFalse(CopyPasteCompatibilityAdapter.shouldAttemptFallback(after: ["reason": reason]))
         }

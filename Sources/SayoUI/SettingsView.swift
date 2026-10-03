@@ -303,6 +303,11 @@ public struct SettingsView: View {
             if model.supportsFocusedInput {
             SayoCard {
                 sectionLabel(t("REPLACEMENT", "替换方式"))
+                toggleRow(t("Character-by-character replacement", "逐字替换动画"), isOn: $model.settings.inputAnimationEnabled, detail: t(
+                    "Reveal whole-input replacements gradually in supported apps. Selected text and terminal drafts are replaced instantly. Respects macOS Reduce Motion.",
+                    "在支持的应用中逐字显示整段替换结果。选区和终端草稿仍一次性回填，并遵循 macOS 的“减少动态效果”设置。"
+                ))
+                Divider()
                 toggleRow(t("Copy/Paste compatibility fallback", "复制/粘贴兼容模式"), isOn: $model.settings.copyPasteCompatibilityEnabled, detail: t(
                     "For apps whose input cannot be read normally. An explicit shortcut copies the current selection, then pastes the rewrite back after checking the app and window.",
                     "用于无法正常读取输入框的应用。快捷键会复制当前选区，并在核对应用和窗口后粘贴改写结果。"

@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Restore the character-by-character replacement switch in Rewriting settings, preserving the current enabled default and allowing instant replacement when turned off."],
+  "zh-CN": ["在改写设置中恢复逐字替换动画开关，保留当前默认启用行为，关闭后立即回填替换结果。"]
+}
