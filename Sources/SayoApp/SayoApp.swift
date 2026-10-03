@@ -92,6 +92,7 @@ public enum SayoRuntime {
     private var model: AppViewModel!
     private var bubble: BubblePanelController!
     private var bridge: TerminalBridge?
+    private var terminalRequestDiagnosticFields: [String: String] = [:]
     private var installer: TerminalInstaller?
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
@@ -178,6 +179,9 @@ public enum SayoRuntime {
                     invocationApplications[id] = ["app": app?.localizedName ?? "unknown", "bundleID": app?.bundleIdentifier ?? "unknown"]
                 }
                 fields.merge(invocationApplications[id] ?? [:], uniquingKeysWith: { current, _ in current })
+            }
+            if self?.routedInput.terminalContext != nil {
+                fields.merge(self?.terminalRequestDiagnosticFields ?? [:], uniquingKeysWith: { current, _ in current })
             }
             if event == "input_captured", self?.routedInput.terminalContext == nil,
                let evidence = self?.accessibility.lastInputDiagnosticFields,
@@ -554,16 +558,20 @@ public enum SayoRuntime {
         if routedInput.terminalContext != nil { coordinator.shortcut(destination: destination); return }
         if let application = NSWorkspace.shared.frontmostApplication,
            TerminalDetector.isTerminal(application.bundleIdentifier) {
-            switch TerminalForegroundProcessDetector.detect(in: application) {
+            let detection = TerminalForegroundProcessDetector.detectWithDiagnostics(in: application)
+            var routeFields = detection.fields
+            routeFields.merge([
+                "app": application.localizedName ?? "unknown", "bundleID": application.bundleIdentifier ?? "unknown",
+                "terminalMatch": "known_bundle_id", "attempt": UUID().uuidString, "trigger": "terminal"
+            ], uniquingKeysWith: { current, _ in current })
+            DiagnosticLog.shared.record("terminal_shortcut_detected", fields: routeFields)
+            switch detection.route {
             case .cli(let command):
-                invokeCLIShortcut(command, triggeringShortcut: triggeringShortcut, destination: destination, applicationPID: application.processIdentifier)
+                invokeCLIShortcut(command, triggeringShortcut: triggeringShortcut, destination: destination,
+                                  applicationPID: application.processIdentifier, diagnosticFields: routeFields)
                 return
             case .unknown:
-                DiagnosticLog.shared.record("terminal_shortcut_route_unknown", fields: [
-                    "app": application.localizedName ?? "unknown",
-                    "bundleID": application.bundleIdentifier ?? "unknown",
-                    "attempt": UUID().uuidString
-                ])
+                DiagnosticLog.shared.record("terminal_shortcut_route_unknown", fields: routeFields)
                 model.notice = localized(
                     "Sayo could not identify the CLI in the focused terminal tab. Focus its input and try again.",
                     "Sayo 无法识别当前终端标签页中的 CLI。请聚焦到输入区后重试。"
@@ -574,15 +582,19 @@ public enum SayoRuntime {
                 break
             }
             guard TerminalShell.allCases.contains(where: { installer?.isInstalled(shell: $0) == true }) else {
+                routeFields["shellInstalled"] = "false"
+                routeFields["reason"] = "shell_integration_missing"
+                DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: routeFields)
                 model.notice = localized(
                     "Install your shell integration in Terminal settings first.",
                     "请先在终端设置中安装 Shell 集成。"
                 ); model.noticeIsError = true
                 showSettings(); return
             }
-            DiagnosticLog.shared.record("terminal_shortcut_route", fields: [
-                "route": "shell", "attempt": UUID().uuidString
-            ])
+            routeFields["shellInstalled"] = "true"
+            routeFields["key"] = "ctrl+x ctrl+r"
+            DiagnosticLog.shared.record("terminal_shortcut_route", fields: routeFields)
+            let dispatchFields = routeFields
             terminalShortcutDispatchTask?.cancel()
             terminalShortcutDispatchTask = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -590,17 +602,14 @@ public enum SayoRuntime {
                 let routeID = self.terminalTranslationRoute.arm(destination: destination, applicationPID: application.processIdentifier)
                 do {
                     try await self.shortcuts.triggerTerminalWidget(afterReleasing: triggeringShortcut)
-                    DiagnosticLog.shared.record("terminal_shortcut_posted", fields: [
-                        "route": "shell", "key": "ctrl+x ctrl+r"
-                    ])
+                    DiagnosticLog.shared.record("terminal_shortcut_posted", fields: dispatchFields)
                 } catch is CancellationError {
                     self.terminalTranslationRoute.clear(id: routeID)
                     return
                 } catch {
                     self.terminalTranslationRoute.clear(id: routeID)
-                    DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: [
-                        "route": "shell", "error": error.localizedDescription
-                    ])
+                    DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields:
+                        dispatchFields.merging(["error": error.localizedDescription], uniquingKeysWith: { _, new in new }))
                     self.model.notice = error.localizedDescription
                     self.model.noticeIsError = true
                 }
@@ -608,10 +617,16 @@ public enum SayoRuntime {
         } else { invokeTextShortcutPressed(destination: destination) }
     }
 
-    private func invokeCLIShortcut(_ command: TerminalForegroundCommand, triggeringShortcut: Shortcut, destination: TranslationDestination, applicationPID: Int32) {
+    private func invokeCLIShortcut(_ command: TerminalForegroundCommand, triggeringShortcut: Shortcut,
+                                   destination: TranslationDestination, applicationPID: Int32,
+                                   diagnosticFields: [String: String]) {
         let program = command.program
+        var routeFields = diagnosticFields
         do {
             guard try CLIEditorInstaller().isInstalled(program) else {
+                routeFields["editorInstalled"] = "false"
+                routeFields["reason"] = "cli_editor_integration_missing"
+                DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: routeFields)
                 model.notice = localized(
                     "Install the \(program.name) editor integration in Terminal settings first.",
                     "请先在终端设置中安装 \(program.name) 编辑器集成。"
@@ -620,8 +635,12 @@ public enum SayoRuntime {
                 showSettings()
                 return
             }
+            routeFields["editorInstalled"] = "true"
             let state = try CLIShortcutSettings().status(program)
+            routeFields["key"] = state.value
             guard let shortcut = CLIShortcut.shortcut(for: state.value) else {
+                routeFields["reason"] = "cli_editor_shortcut_unbound"
+                DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: routeFields)
                 model.notice = localized(
                     "The \(program.name) external-editor shortcut is unbound.",
                     "\(program.name) 的外部编辑器快捷键尚未绑定。"
@@ -630,14 +649,9 @@ public enum SayoRuntime {
                 showSettings()
                 return
             }
-            DiagnosticLog.shared.record("terminal_shortcut_route", fields: [
-                "route": "cli",
-                "program": program.rawValue,
-                "key": state.value,
-                "tty": command.tty ?? "unknown",
-                "matchesGlobal": String(coordinator.settings.activeGlobalShortcuts.contains(shortcut)),
-                "attempt": UUID().uuidString
-            ])
+            routeFields["matchesGlobal"] = String(coordinator.settings.activeGlobalShortcuts.contains(shortcut))
+            DiagnosticLog.shared.record("terminal_shortcut_route", fields: routeFields)
+            let dispatchFields = routeFields
             terminalShortcutDispatchTask?.cancel()
             terminalShortcutDispatchTask = Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -648,31 +662,22 @@ public enum SayoRuntime {
                         shortcut,
                         afterReleasing: triggeringShortcut
                     )
-                    DiagnosticLog.shared.record("terminal_shortcut_posted", fields: [
-                        "program": program.rawValue,
-                        "key": state.value,
-                        "relayed": String(relayed)
-                    ])
+                    DiagnosticLog.shared.record("terminal_shortcut_posted", fields:
+                        dispatchFields.merging(["relayed": String(relayed)], uniquingKeysWith: { _, new in new }))
                 } catch is CancellationError {
                     self.terminalTranslationRoute.clear(id: routeID)
                     return
                 } catch {
                     self.terminalTranslationRoute.clear(id: routeID)
-                    DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: [
-                        "route": "cli",
-                        "program": program.rawValue,
-                        "error": error.localizedDescription
-                    ])
+                    DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields:
+                        dispatchFields.merging(["error": error.localizedDescription], uniquingKeysWith: { _, new in new }))
                     self.model.notice = error.localizedDescription
                     self.model.noticeIsError = true
                 }
             }
         } catch {
-            DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields: [
-                "route": "cli",
-                "program": program.rawValue,
-                "error": error.localizedDescription
-            ])
+            DiagnosticLog.shared.record("terminal_shortcut_route_failed", fields:
+                routeFields.merging(["error": error.localizedDescription], uniquingKeysWith: { _, new in new }))
             model.notice = error.localizedDescription
             model.noticeIsError = true
             showSettings()
@@ -745,6 +750,9 @@ public enum SayoRuntime {
             return .init(error: localized("Sayo is disabled in this app.", "Sayo 已在此应用中停用。"))
         }
         let destination = terminalTranslationRoute.consume(for: request)
+        terminalRequestDiagnosticFields = TerminalForegroundProcessDetector.detectWithDiagnostics(in: application).fields
+        terminalRequestDiagnosticFields["terminalMatch"] = TerminalDetector.isTerminal(application.bundleIdentifier) ? "known_bundle_id" : "bridge_request"
+        terminalRequestDiagnosticFields["method"] = "terminal_bridge"
         coordinator.dismiss()
         let timeoutMessage = localized(
             "Rewrite timed out. Your original buffer was kept.",

@@ -59,6 +59,58 @@ final class DiagnosticAnalysisTests: XCTestCase {
         XCTAssertEqual(DiagnosticEvent.errorCode(SayoError.network("secret response")), "network")
     }
 
+    func testTerminalRecognitionHasDistinctExplanationFromExcludedApplications() {
+        let terminal = DiagnosticEvent(timestamp: "", event: "input", fields: ["reason": "terminal_detected"])
+        XCTAssertTrue(terminal.explanation(.simplifiedChinese).contains("按应用标识识别为终端"))
+        XCTAssertTrue(terminal.explanation(.english).contains("Shell or CLI"))
+        let excluded = DiagnosticEvent(timestamp: "", event: "input", fields: ["reason": "excluded_app"])
+        XCTAssertTrue(excluded.explanation(.simplifiedChinese).contains("应用范围设置"))
+        XCTAssertFalse(excluded.explanation(.english).contains("terminal"))
+    }
+
+    func testTerminalRoutingFailuresAreGroupedAndIncludedInRedactedAIEvidence() throws {
+        let lines = try [
+            line("terminal_shortcut_detected", ["attempt": "missing", "app": "Otty", "bundleID": "io.appmakes.otty",
+                 "trigger": "terminal", "terminalMatch": "known_bundle_id", "route": "cli", "program": "claude",
+                 "detectionMethod": "focused_title", "candidateCount": "1", "sessionCount": "2",
+                 "focusedTitle": "private document", "arguments": "private command", "pid": "42"]),
+            line("terminal_shortcut_route_failed", ["attempt": "missing", "reason": "cli_editor_integration_missing", "editorInstalled": "false"]),
+            line("terminal_shortcut_detected", ["attempt": "unknown", "app": "Other Terminal", "route": "unknown", "detectionMethod": "ambiguous_sessions"]),
+            line("terminal_shortcut_route_unknown", ["attempt": "unknown"]),
+            line("terminal_shortcut_detected", ["attempt": "posted", "app": "Working Terminal"]),
+            line("terminal_shortcut_posted", ["attempt": "posted", "key": "ctrl+g"])
+        ]
+        let analysis = DiagnosticAnalysis(jsonLines: lines.joined(separator: "\n"))
+        let failed = try XCTUnwrap(analysis.groups.first { $0.id == "terminal:missing" })
+        XCTAssertEqual(failed.outcome, "failed")
+        XCTAssertEqual(failed.trigger, "terminal")
+        XCTAssertFalse(failed.incomplete)
+        XCTAssertEqual(failed.applicationKey, "io.appmakes.otty")
+        XCTAssertEqual(analysis.groups.first { $0.id == "terminal:posted" }?.outcome, "dispatched")
+        let evidence = AIDiagnosticEvidence(jsonLines: lines.joined(separator: "\n"),
+            now: try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-07T15:00:00Z")))
+        XCTAssertEqual(evidence.failures.count, 2)
+        let otty = try XCTUnwrap(evidence.failures.first { $0.application == "Otty" })
+        XCTAssertEqual(otty.events.map(\.event), ["terminal_shortcut_detected", "terminal_shortcut_route_failed"])
+        XCTAssertEqual(otty.events.first?.fields["detectionMethod"], "focused_title")
+        XCTAssertEqual(otty.events.first?.fields["program"], "claude")
+        XCTAssertEqual(otty.events.last?.fields["editorInstalled"], "false")
+        let exported = try evidence.jsonText()
+        for secret in ["private document", "private command", "attempt", "pid"] { XCTAssertFalse(exported.contains(secret)) }
+    }
+
+    func testBridgeFailurePreservesTerminalEvidenceForAI() throws {
+        let lines = try [
+            line("invocation_started", ["invocationID": "bridge", "app": "Otty", "terminalMatch": "known_bundle_id",
+                 "trigger": "terminal", "program": "claude", "method": "terminal_bridge", "detectionMethod": "focused_title"]),
+            line("invocation_failed", ["invocationID": "bridge", "error": "network"])
+        ]
+        let evidence = AIDiagnosticEvidence(jsonLines: lines.joined(separator: "\n"),
+            now: try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-07T15:00:00Z")))
+        XCTAssertEqual(evidence.failures.first?.events.first?.fields["method"], "terminal_bridge")
+        XCTAssertEqual(evidence.failures.first?.events.first?.fields["program"], "claude")
+    }
+
     func testAIDiagnosticEvidenceIncludesAllRecentFailuresAndTheirFullTimelines() throws {
         let lines = try [
             line("invocation_started", ["invocationID": "a", "app": "Editor", "bundleID": "com.example.editor"], timestamp: "2026-09-07T14:29:30.000Z"),

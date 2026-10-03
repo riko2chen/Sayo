@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Explain terminal recognition and Shell/CLI routing in application logs, including detection evidence, integration status and dispatched shortcuts; include terminal routing failures in AI self-diagnosis."],
+  "zh-CN": ["应用日志说明终端识别与 Shell/CLI 路由依据，记录集成状态和转发快捷键，并将终端路由失败纳入 AI 自诊断。"]
+}

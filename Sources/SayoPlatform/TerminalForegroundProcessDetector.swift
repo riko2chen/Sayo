@@ -19,6 +19,12 @@ public enum TerminalForegroundRoute: Equatable, Sendable {
     case unknown
 }
 
+/// Structural evidence only: no window titles, terminal contents or process arguments.
+public struct TerminalForegroundDetection: Equatable, Sendable {
+    public let route: TerminalForegroundRoute
+    public let fields: [String: String]
+}
+
 struct TerminalProcessRecord: Equatable {
     let pid: pid_t
     let parentPID: pid_t
@@ -31,9 +37,15 @@ struct TerminalProcessRecord: Equatable {
 
 public enum TerminalForegroundProcessDetector {
     public static func detect(in application: NSRunningApplication) -> TerminalForegroundRoute {
-        guard let records = processSnapshot() else { return .unknown }
+        detectWithDiagnostics(in: application).route
+    }
+
+    public static func detectWithDiagnostics(in application: NSRunningApplication) -> TerminalForegroundDetection {
+        guard let records = processSnapshot() else {
+            return .init(route: .unknown, fields: ["detectionMethod": "process_snapshot_unavailable", "route": "unknown"])
+        }
         let context = accessibilityContext(for: application.processIdentifier)
-        return detect(
+        return detectWithDiagnostics(
             records: records,
             terminalPID: application.processIdentifier,
             focusedTTY: tty(in: context.value),
@@ -49,6 +61,17 @@ public enum TerminalForegroundProcessDetector {
         focusedText: String = "",
         focusedTitle: String = ""
     ) -> TerminalForegroundRoute {
+        detectWithDiagnostics(records: records, terminalPID: terminalPID, focusedTTY: focusedTTY,
+                              focusedText: focusedText, focusedTitle: focusedTitle).route
+    }
+
+    static func detectWithDiagnostics(
+        records: [TerminalProcessRecord],
+        terminalPID: pid_t,
+        focusedTTY: String?,
+        focusedText: String = "",
+        focusedTitle: String = ""
+    ) -> TerminalForegroundDetection {
         var descendants: Set<pid_t> = [terminalPID]
         var changed = true
         while changed {
@@ -68,6 +91,21 @@ public enum TerminalForegroundProcessDetector {
             guard let program = program(for: record) else { return nil }
             return (record, program)
         }
+        let sessionTTYs = Set(terminalRecords.map(\.tty).filter { $0 != "??" && $0 != "-" })
+        func result(_ route: TerminalForegroundRoute, method: String) -> TerminalForegroundDetection {
+            var fields = ["detectionMethod": method, "candidateCount": String(candidates.count),
+                          "sessionCount": String(sessionTTYs.count)]
+            if let focusedTTY { fields["focusedTTY"] = focusedTTY }
+            if let program = program(inTitle: focusedTitle) { fields["titleProgram"] = program.rawValue }
+            switch route {
+            case .cli(let command):
+                fields["route"] = "cli"; fields["program"] = command.program.rawValue
+                fields["tty"] = command.tty ?? "unknown"
+            case .shell: fields["route"] = "shell"
+            case .unknown: fields["route"] = "unknown"
+            }
+            return .init(route: route, fields: fields)
+        }
 
         // Ghostty retains scrollback in AXValue, including stale "Last login … on
         // ttysNNN" lines. Its focused window title follows the running full-screen
@@ -76,12 +114,12 @@ public enum TerminalForegroundProcessDetector {
             let matches = candidates.filter { $0.1 == titledProgram }
             let ttys = Set(matches.map(\.0.tty))
             if !matches.isEmpty {
-                return .cli(.init(program: titledProgram, tty: ttys.count == 1 ? ttys.first : nil))
+                return result(.cli(.init(program: titledProgram, tty: ttys.count == 1 ? ttys.first : nil)), method: "focused_title")
             }
         }
 
         if let focusedTTY {
-            return route(for: candidates.filter { $0.0.tty == focusedTTY }, tty: focusedTTY)
+            return result(route(for: candidates.filter { $0.0.tty == focusedTTY }, tty: focusedTTY), method: "focused_tty")
         }
 
         let mentionedPrograms = Set(candidates.map(\.1).filter { program in
@@ -95,17 +133,17 @@ public enum TerminalForegroundProcessDetector {
         })
         if mentionedPrograms.count == 1, let program = mentionedPrograms.first,
            let tty = candidates.first(where: { $0.1 == program })?.0.tty {
-            return .cli(.init(program: program, tty: tty))
+            return result(.cli(.init(program: program, tty: tty)), method: "focused_text_program")
         }
 
-        let sessionTTYs = Set(terminalRecords.map(\.tty).filter { $0 != "??" && $0 != "-" })
         if sessionTTYs.count == 1, let tty = sessionTTYs.first {
-            return route(for: candidates.filter { $0.0.tty == tty }, tty: tty)
+            return result(route(for: candidates.filter { $0.0.tty == tty }, tty: tty), method: "single_session")
         }
 
         // No supported foreground CLI exists in any of this terminal application's
         // sessions, so the focused session can safely use the shell widget route.
-        return candidates.isEmpty ? .shell : .unknown
+        return result(candidates.isEmpty ? .shell : .unknown,
+                      method: candidates.isEmpty ? "no_supported_foreground_cli" : "ambiguous_sessions")
     }
 
     private static func route(

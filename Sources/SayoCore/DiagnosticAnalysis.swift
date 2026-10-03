@@ -60,6 +60,27 @@ public struct DiagnosticEvent: Codable, Equatable, Sendable {
         case "replacement_finished", "invocation_completed":
             return f["outcome"] == "inserted_at_caret" ? t("Inserted at the original caret; original text was kept.", "已追加到原光标位置，原文保留。") : t("Replacement completed.", "已完成替换。")
         case "replacement_failed", "invocation_failed": return Self.errorExplanation(f["error"], language)
+        case "terminal_shortcut_detected":
+            let methods = ["focused_title": "聚焦窗口标题与前台进程匹配", "focused_tty": "聚焦 TTY 与前台进程匹配",
+                           "focused_text_program": "聚焦终端内容中的 CLI 名称与前台进程匹配", "single_session": "只有一个终端会话",
+                           "no_supported_foreground_cli": "没有受支持的前台 CLI", "ambiguous_sessions": "多个会话无法确定聚焦 CLI",
+                           "process_snapshot_unavailable": "无法读取进程快照"]
+            let method = f["detectionMethod"] ?? "unknown"
+            return t("Recognized \(f["app"] ?? "app") as a terminal by bundle ID; route \(f["route"] ?? "unknown"), CLI \(f["program"] ?? "none"), evidence \(method).",
+                     "按应用标识识别 \(f["app"] ?? "当前应用") 为终端；路由：\(f["route"] ?? "unknown")，CLI：\(f["program"] ?? "无")；依据：\(methods[method] ?? method)。")
+        case "terminal_shortcut_route":
+            return t("Using \(f["route"] ?? "unknown") integration with key \(f["key"] ?? "unknown").",
+                     "使用 \(f["route"] ?? "unknown") 集成，转发快捷键 \(f["key"] ?? "未知")。")
+        case "terminal_shortcut_posted":
+            return t("Terminal shortcut \(f["key"] ?? "unknown") dispatched; this alone does not confirm an editor opened or text was replaced.",
+                     "已发送终端快捷键 \(f["key"] ?? "未知")；仅此记录还不能确认编辑器已打开或正文已替换。")
+        case "terminal_shortcut_route_unknown":
+            return t("Could not identify the CLI in the focused terminal tab; no shortcut was sent.", "无法确定聚焦终端标签页中的 CLI，未发送快捷键。")
+        case "terminal_shortcut_route_failed":
+            let reasons = ["shell_integration_missing": "尚未安装 Shell 集成", "cli_editor_integration_missing": "尚未安装 CLI 外部编辑器集成",
+                           "cli_editor_shortcut_unbound": "CLI 外部编辑器快捷键未绑定"]
+            return t("Terminal handoff stopped: \(f["reason"] ?? f["error"] ?? "unknown").",
+                     "终端转发停止：\(reasons[f["reason"] ?? ""] ?? f["error"] ?? "未知原因")。")
         case "input":
             switch f["reason"] {
             case "placeholder_containment_length": return t("Filtered placeholder: the value contains it and is no longer than twice its length (\(f["rawLength"] ?? "?") → 0).", "文案包含 placeholder，且长度不超过其两倍，已按空内容处理（\(f["rawLength"] ?? "?") → 0）。")
@@ -68,6 +89,9 @@ public struct DiagnosticEvent: Codable, Equatable, Sendable {
             case "empty_value": return t("The focused input is empty.", "当前输入框为空。")
             case "secure_input_skipped": return t("Skipped a secure input without reading its text.", "当前为密码等安全输入框，未读取正文。")
             case "terminal_or_excluded_app", "sayo_settings": return t("This application is excluded or uses terminal integration.", "当前应用被排除，或需要走终端集成。")
+            case "terminal_detected": return t("Recognized this terminal by its application bundle ID. Use Shell or CLI external-editor integration; terminal screen text is not a normal editable input.",
+                                               "按应用标识识别为终端，应走 Shell 或 CLI 外部编辑器集成；终端屏幕内容不作为普通输入框读取。")
+            case "excluded_app": return t("Sayo is disabled for this app by the application filter.", "应用范围设置已在此应用中停用 Sayo。")
             case "no_focused_element": return t("No focused input was exposed by the app.", "应用没有提供当前聚焦的输入控件。")
             case "unsupported_role": return t("Focused control \(f["role"] ?? "?") is not a supported text input.", "当前聚焦的 \(f["role"] ?? "?") 控件不是支持的文本输入框。")
             default: return t("Input read was unavailable: \(f["reason"] ?? "unknown").", "未能读取输入，原因：\(f["reason"] ?? "未知")。")
@@ -135,13 +159,15 @@ public struct DiagnosticGroup: Identifiable, Equatable, Sendable {
     public var applicationKey: String { events.compactMap { $0.fields["bundleID"] }.first ?? application }
     public var startedAt: Date? { events.first?.date }
     public var lastEventAt: Date? { events.last?.date }
-    public var trigger: String? { events.first(where: { $0.event == "invocation_started" })?.fields["trigger"] }
+    public var trigger: String? { events.first(where: { $0.event == "invocation_started" || $0.event == "terminal_shortcut_detected" })?.fields["trigger"] }
     public var ordinal: String? { events.first(where: { $0.event == "invocation_started" })?.fields["ordinal"] }
-    public var incomplete: Bool { category == .invocation && !events.contains(where: { $0.event == "invocation_started" }) }
+    public var incomplete: Bool { category == .invocation && !events.contains(where: { $0.event == "invocation_started" || $0.event == "terminal_shortcut_detected" }) }
     public var outcome: String? {
-        events.last(where: { ["invocation_completed", "replacement_finished", "invocation_failed", "replacement_failed", "invocation_cancelled", "invocation_ignored", "rewrite_ready", "rewrite_requested"].contains($0.event) }).map {
+        events.last(where: { ["invocation_completed", "replacement_finished", "invocation_failed", "replacement_failed", "invocation_cancelled", "invocation_ignored", "rewrite_ready", "rewrite_requested", "terminal_shortcut_route_failed", "terminal_shortcut_route_unknown", "terminal_shortcut_posted"].contains($0.event) }).map {
             switch $0.event {
             case "invocation_failed", "replacement_failed": return "failed"
+            case "terminal_shortcut_route_failed", "terminal_shortcut_route_unknown": return "failed"
+            case "terminal_shortcut_posted": return "dispatched"
             case "invocation_cancelled": return "cancelled"
             case "invocation_ignored": return "ignored"
             case "rewrite_ready": return "ready"
@@ -160,6 +186,7 @@ public struct DiagnosticGroup: Identifiable, Equatable, Sendable {
         case "ignored": return language.text("Skipped", "未触发改写")
         case "ready": return language.text("Result ready; not yet applied", "结果已就绪，尚未应用")
         case "loading": return language.text("Request started; no completion recorded", "已发起请求，尚无完成记录")
+        case "dispatched": return language.text("Shortcut sent; replacement not confirmed here", "快捷键已发送，此记录尚未确认替换")
         default: return category == .invocation ? language.text("No outcome recorded", "暂无结果记录") : language.text("\(events.count) events", "\(events.count) 条事件")
         }
     }
@@ -180,6 +207,8 @@ public struct DiagnosticAnalysis: Equatable, Sendable {
             let key: String
             if let invocation = event.fields["invocationID"], !invocation.isEmpty {
                 category = .invocation; key = "invocation:\(invocation)"
+            } else if event.event.hasPrefix("terminal_shortcut_"), let attempt = event.fields["attempt"], !attempt.isEmpty {
+                category = .invocation; key = "terminal:\(attempt)"
             } else if event.event == "input" {
                 category = .input; key = "input:\(event.fields["bundleID"] ?? event.fields["app"] ?? "unknown"):\(event.fields["inputID"] ?? "unavailable")"
             } else if event.event == "bubble" {
@@ -232,7 +261,9 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
         "placeholderMatchesValue", "placeholderSource", "prefersPaste", "range", "rawLength",
         "reason", "replacementLength", "resolvedLength", "resultLength", "revertedAfterResult",
         "role", "samples", "scope", "selection", "sequence", "sourceLength", "stableSamples",
-        "status", "step", "targetRange", "textSnippets", "tree", "trigger", "webInput"
+        "status", "step", "targetRange", "textSnippets", "tree", "trigger", "webInput",
+        "terminalMatch", "detectionMethod", "route", "program", "key", "tty", "focusedTTY",
+        "titleProgram", "candidateCount", "sessionCount", "editorInstalled", "shellInstalled", "matchesGlobal", "relayed"
     ]
 
     public init(
@@ -246,7 +277,7 @@ public struct AIDiagnosticEvidence: Codable, Equatable, Sendable {
         let candidates = analysis.groups.compactMap { group -> (DiagnosticGroup, Date)? in
             guard group.category == .invocation, group.outcome == "failed",
                   let failedAt = group.events.last(where: {
-                      $0.event == "invocation_failed" || $0.event == "replacement_failed"
+                      ["invocation_failed", "replacement_failed", "terminal_shortcut_route_failed", "terminal_shortcut_route_unknown"].contains($0.event)
                   })?.date,
                   failedAt >= cutoff, failedAt <= now
             else { return nil }

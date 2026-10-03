@@ -301,6 +301,12 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
             "bundleID": foreground?.bundleIdentifier ?? "unknown", "reason": "permission_required"]
         defer { lastInputDiagnosticFields = diagnostics; DiagnosticLog.shared.record("input", fields: diagnostics) }
         guard Self.isTrusted else { throw SayoError.permissionRequired }
+        if let foreground, TerminalDetector.isTerminal(foreground.bundleIdentifier) {
+            diagnostics["reason"] = "terminal_detected"
+            diagnostics["terminalMatch"] = "known_bundle_id"
+            diagnostics["route"] = "terminal_integration"
+            return nil
+        }
 
         // Chromium/Electron expose text markers only after an assistive client
         // requests their full accessibility tree. Do this on activation, before
@@ -329,8 +335,8 @@ public final class AccessibilityTextAdapter: TextInputSource, AnimatedTextReplac
         diagnostics["app"] = application.localizedName ?? "unknown"
         diagnostics["bundleID"] = bundleID ?? "unknown"
         diagnostics["pid"] = String(pid)
-        if TerminalDetector.isTerminal(bundleID) || !isApplicationAllowed(bundleID) {
-            diagnostics["reason"] = "terminal_or_excluded_app"
+        if !isApplicationAllowed(bundleID) {
+            diagnostics["reason"] = "excluded_app"
             return nil
         }
         if pid == ProcessInfo.processInfo.processIdentifier && isOwnSettings(focused) {
