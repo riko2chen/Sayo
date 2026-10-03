@@ -27,5 +27,13 @@
     "updates": [
       "homebrew-installation-20260929"
     ]
+  },
+  {
+    "version": "0.2.3",
+    "updates": [
+      "otty-cli-editor-routing-20261003",
+      "restore-input-animation-setting-20261003",
+      "terminal-routing-diagnostics-20261003"
+    ]
   }
 ]

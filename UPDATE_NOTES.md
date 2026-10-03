@@ -1,5 +1,19 @@
 # Sayo update notes
 
+## 0.2.3
+
+### English
+
+- Recognize Otty as a terminal so Sayo shortcuts open the active CLI's external editor instead of replacing terminal screen text.
+- Restore the character-by-character replacement switch in Rewriting settings, preserving the current enabled default and allowing instant replacement when turned off.
+- Explain terminal recognition and Shell/CLI routing in application logs, including detection evidence, integration status and dispatched shortcuts; include terminal routing failures in AI self-diagnosis.
+
+### 简体中文
+
+- 识别 Otty 终端，让 Sayo 快捷键调用当前 CLI 的外部编辑器，避免按普通输入框处理终端屏幕文本。
+- 在改写设置中恢复逐字替换动画开关，保留当前默认启用行为，关闭后立即回填替换结果。
+- 应用日志说明终端识别与 Shell/CLI 路由依据，记录集成状态和转发快捷键，并将终端路由失败纳入 AI 自诊断。
+
 ## 0.2.2
 
 ### English
