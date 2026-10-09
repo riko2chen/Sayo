@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Use crisp LobeHub SVG logos for supported model providers in settings and service editors."],
+  "zh-CN": ["大模型设置和服务编辑窗口采用 LobeHub SVG 品牌图标，缩放更清晰。"]
+}

@@ -403,8 +403,7 @@ public enum SayoRuntime {
                 try self.registerShortcuts(settings)
                 self.coordinator.configureShortcutBehavior(settings)
                 self.model.notice = self.localized(
-                    "Working mode updated.",
-                    "工作模式已更新。"
+                    "Rewrite mode updated.", "操作方式已更新。"
                 )
                 self.model.noticeIsError = false
             } catch {
@@ -860,8 +859,8 @@ public enum SayoRuntime {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 660, height: 680),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
-        window.title = localized(session.isNew ? "Add model" : "Edit model",
-                                 session.isNew ? "新增模型" : "编辑模型")
+        window.title = localized(session.isNew ? "Add service" : "Edit service",
+                                 session.isNew ? "添加服务" : "编辑服务")
         window.identifier = .init("sayo.model-editor")
         window.minSize = NSSize(width: 620, height: 630)
         window.titlebarAppearsTransparent = true
@@ -886,14 +885,14 @@ public enum SayoRuntime {
             let text = try text ?? DiagnosticLog.shared.recentText(limit: Int.max)
             let panel = NSSavePanel()
             panel.nameFieldStringValue = "sayo-diagnostics.jsonl"
-            panel.title = localized("Export diagnostic logs", "导出诊断日志")
+            panel.title = localized("Export records", "导出记录")
             panel.canCreateDirectories = true
             guard let settingsWindow else { return }
             panel.beginSheetModal(for: settingsWindow) { [weak self] response in
                 guard let self, response == .OK, let url = panel.url else { return }
                 do {
                     try text.write(to: url, atomically: true, encoding: .utf8)
-                    self.model.notice = self.localized("Logs exported to \(url.path)", "日志已导出到 \(url.path)")
+                    self.model.notice = self.localized("Records exported.\n\(url.path)", "记录已导出。\n\(url.path)")
                     self.model.noticeIsError = false
                 } catch { self.model.notice = error.localizedDescription; self.model.noticeIsError = true }
             }
@@ -927,14 +926,14 @@ public enum SayoRuntime {
         filenameDate.locale = Locale(identifier: "en_US_POSIX")
         filenameDate.dateFormat = "yyyyMMdd-HHmmss"
         panel.nameFieldStringValue = "sayo-ai-diagnosis-\(filenameDate.string(from: Date())).txt"
-        panel.title = localized("Save AI diagnosis", "保存 AI 自诊断结果")
+        panel.title = localized("Save result", "保存结果")
         panel.canCreateDirectories = true
         guard let settingsWindow else { return }
         panel.beginSheetModal(for: settingsWindow.attachedSheet ?? settingsWindow) { [weak self] response in
             guard let self, response == .OK, let url = panel.url else { return }
             do {
                 try report.write(to: url, atomically: true, encoding: .utf8)
-                self.model.notice = self.localized("Diagnosis saved to \(url.path)", "诊断结果已保存到 \(url.path)")
+                self.model.notice = self.localized("Troubleshooting result saved.\n\(url.path)", "排查结果已保存。\n\(url.path)")
                 self.model.noticeIsError = false
             } catch {
                 self.model.notice = error.localizedDescription
@@ -959,11 +958,10 @@ public enum SayoRuntime {
 
     private func confirmDiscardModelChanges() -> Bool {
         let alert = NSAlert()
-        alert.messageText = localized("Discard unsaved model changes?", "放弃未保存的模型更改？")
-        alert.informativeText = localized("Changes in this window will not be saved.",
-                                         "此窗口中的更改不会保存。")
+        alert.messageText = localized("Discard changes?", "放弃修改")
+        alert.informativeText = localized("Your changes have not been saved.", "当前修改尚未保存。")
         alert.addButton(withTitle: localized("Keep editing", "继续编辑"))
-        alert.addButton(withTitle: localized("Discard changes", "放弃更改"))
+        alert.addButton(withTitle: localized("Discard changes", "放弃修改"))
         alert.alertStyle = .warning
         return alert.runModal() == .alertSecondButtonReturn
     }

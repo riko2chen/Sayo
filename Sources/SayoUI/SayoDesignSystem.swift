@@ -164,11 +164,21 @@ struct ProviderBadge: View {
         }
     }
     var body: some View {
-        Image(systemName: symbol).font(.system(size: size * 0.46, weight: .medium))
-            .foregroundStyle(color)
-            .frame(width: size, height: size)
-            .background(color.opacity(0.085), in: RoundedRectangle(cornerRadius: size * 0.28))
-            .accessibilityHidden(true)
+        Group {
+            if let image = ProviderIconAssets.image(for: provider) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size * 0.62, height: size * 0.62)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.46, weight: .medium))
+                    .foregroundStyle(color)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(color.opacity(0.085), in: RoundedRectangle(cornerRadius: size * 0.28))
+        .accessibilityHidden(true)
     }
 }
 
@@ -191,7 +201,7 @@ struct SayoCopyValue: View {
             }
             .buttonStyle(.plain)
             .help(language.text("Copy", "复制"))
-            .accessibilityLabel(language.text("Copy Base URL", "复制 Base URL"))
+            .accessibilityLabel(language.text("Copy service address", "复制地址"))
             .task(id: copied) {
                 guard copied else { return }
                 do { try await Task.sleep(for: .seconds(2)); copied = false } catch {}
@@ -218,11 +228,11 @@ struct ModelProfilePickerView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(adding ? language.text("Add provider", "新增供应商") : language.text("Switch provider", "切换供应商"))
+            Text(adding ? language.text("Add service", "添加服务") : language.text("Switch service", "切换服务"))
                 .font(.system(size: 15, weight: .semibold))
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(SayoStyle.muted)
-                TextField(language.text("Search providers or models", "搜索供应商或模型"), text: $query)
+                TextField(language.text("Search services or models", "搜索服务或模型"), text: $query)
                     .textFieldStyle(.plain).font(.system(size: 12))
                     .focused($searchFocused)
                     .accessibilityIdentifier("model-profile-search")
@@ -254,7 +264,7 @@ struct ModelProfilePickerView: View {
                         .buttonStyle(.plain)
                     }
                     if filteredProfiles.isEmpty {
-                        Text(language.text("No matching providers", "没有匹配的供应商"))
+                        Text(language.text("No matching services.", "没有找到相关服务。"))
                             .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                             .padding(.vertical, 24)
                     }
@@ -311,7 +321,7 @@ struct ModelNamePickerView: View {
                     }
                     if filtered.isEmpty {
                         Text(status.isEmpty
-                             ? language.text("No matching models", "没有匹配的模型")
+                             ? language.text("No matching models.", "没有找到相关模型。")
                              : status)
                             .font(.system(size: 12)).foregroundStyle(SayoStyle.muted).padding(10)
                     }
@@ -320,7 +330,7 @@ struct ModelNamePickerView: View {
             if loading {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text(language.text("Loading models…", "正在加载模型…"))
+                    Text(language.text("Getting the model list…", "正在获取模型列表…"))
                         .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 }
             } else if !status.isEmpty, !filtered.isEmpty {

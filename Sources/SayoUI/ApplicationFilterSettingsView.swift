@@ -42,32 +42,32 @@ struct ApplicationFilterSettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             // The settings page title already names this section.
             Text(mode == .blacklist
-                ? t("Sayo works everywhere except the apps you select.", "Sayo 会在除所选应用之外的所有应用中工作。")
-                : t("Sayo works only in the apps you select.", "Sayo 只会在你选择的应用中工作。"))
+                ? t("Use Sayo in every app except those selected.", "除所选应用外，其他应用都可使用。")
+                : t("Use Sayo only in the selected apps.", "只在所选应用中使用。"))
                 .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
 
             HStack(spacing: 12) {
-                SayoSegmentedControl(title: t("App access mode", "应用范围模式"),
+                SayoSegmentedControl(title: t("Where to use Sayo", "使用方式"),
                     options: [ApplicationFilterMode.blacklist, .whitelist], selection: $mode) {
-                        $0 == .blacklist ? t("Blacklist", "黑名单") : t("Whitelist", "白名单")
+                        $0 == .blacklist ? t("Except selected", "排除所选") : t("Only selected", "仅限所选")
                     }
                 .frame(width: 250)
 
                 Spacer()
 
-                Text(t("Selected: \(selectedBundleIDs.count)", "已选择：\(selectedBundleIDs.count)"))
+                Text(t("Selected: \(selectedBundleIDs.count)", "已选：\(selectedBundleIDs.count)"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
-                Button(t("Clear all", "全部清除"), role: .destructive) { selectedBundleIDs.removeAll() }
+                Button(t("Clear selection", "清空选择"), role: .destructive) { selectedBundleIDs.removeAll() }
                     .disabled(selectedBundleIDs.isEmpty)
             }
 
-            Text(t("Click or drag apps between columns. 20 apps per page.", "点按或拖动应用可在两列之间移动，每页 20 个。"))
+            Text(t("Click or drag apps to move them between lists.\nEach page shows 20 apps.", "点击或拖动应用，即可调整。\n每页显示 20 个应用。"))
                 .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
 
             HStack(alignment: .top, spacing: 12) {
                 appColumn(title: t("Available apps", "可选应用"), apps: availableApps,
                           page: $availablePage, selected: false, targeted: $availableTargeted)
-                appColumn(title: mode == .blacklist ? t("Blacklist", "黑名单") : t("Whitelist", "白名单"),
+                appColumn(title: mode == .blacklist ? t("Excluded apps", "排除应用") : t("Enabled apps", "启用应用"),
                           apps: selectedApps, page: $selectedPage, selected: true, targeted: $selectedTargeted)
             }
             .animation(reduceMotion ? .easeOut(duration: 0.15) : .smooth(duration: 0.32),
@@ -121,25 +121,25 @@ struct ApplicationFilterSettingsView: View {
                 VStack(spacing: 0) {
                     if visibleApps.isEmpty {
                         Text(selected
-                             ? t("Click or drag apps here to add them.", "点按左侧应用或拖到此处添加。")
+                             ? t("Click an app on the left, or drag it here.", "点击左侧应用，或拖到这里。")
                              : scanningInstalledApplications
-                                ? t("Scanning applications…", "正在扫描应用…")
-                                : t("No available apps.", "暂无可选应用。"))
+                                ? t("Finding apps…", "正在查找应用…")
+                                : t("No available apps.", "没有可选应用。"))
                             .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(12)
                             .transition(.opacity)
                     }
                     if !visibleRunning.isEmpty || (currentPage == 0 && !apps.isEmpty) {
-                        sectionHeader(t("Running now", "正在运行"), count: running.count)
+                        sectionHeader(t("Open apps", "已打开"), count: running.count)
                         if visibleRunning.isEmpty {
-                            Text(t("No running apps in this list.", "此列表暂无正在运行的应用。"))
+                            Text(t("No open apps in this list.", "列表中没有已打开的应用。"))
                                 .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                         }
                         ForEach(visibleRunning) { app in appRow(app, selected: selected) }
                     }
                     if !visibleOther.isEmpty {
-                        sectionHeader(t("All apps (excluding running)", "全部应用（不含正在运行）"), count: other.count)
+                        sectionHeader(t("Other apps", "未打开"), count: other.count)
                         ForEach(visibleOther) { app in appRow(app, selected: selected) }
                     }
                 }.padding(4)

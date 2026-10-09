@@ -23,7 +23,7 @@ import SayoUI
         let model = AppViewModel(settings: .init())
         model.settings.interfaceLanguage = .simplifiedChinese
         XCTAssertFalse(model.canRequestUpdateCheck)
-        XCTAssertEqual(model.updateActionTitle, "更新不可用")
+        XCTAssertEqual(model.updateActionTitle, "暂不可用")
     }
 
     func testFailedCheckCanBeRetriedButAnActiveCheckCannotBeDuplicated() {
@@ -43,8 +43,8 @@ import SayoUI
 
     func testButtonReflectsDownloadAndInstallStagesInBothLanguages() {
         let model = AppViewModel(settings: .init())
-        for (language, download, install) in [(InterfaceLanguage.english, "Download Update", "Update Now"),
-                                             (.simplifiedChinese, "下载更新", "点击更新")] {
+        for (language, download, install) in [(InterfaceLanguage.english, "Download update", "Update now"),
+                                             (.simplifiedChinese, "下载新版", "立即更新")] {
             model.settings.interfaceLanguage = language
             model.updateState = .available(version: "1.0.0")
             XCTAssertEqual(model.updateActionTitle, download)
@@ -58,15 +58,15 @@ import SayoUI
         let model = AppViewModel(settings: .init())
         model.settings.interfaceLanguage = .simplifiedChinese
         model.updateState = .checking
-        XCTAssertEqual(model.updateActionTitle, "检查更新中")
+        XCTAssertEqual(model.updateActionTitle, "检查中")
         model.updateState = .downloading(version: "1.0.0", progress: 0.4)
         XCTAssertEqual(model.updateActionTitle, "下载中 40%")
         XCTAssertFalse(model.canRequestUpdateCheck)
         model.updateState = .upToDate
-        XCTAssertEqual(model.updateActionTitle, "已是最新版本")
+        XCTAssertEqual(model.updateActionTitle, "已是最新")
         XCTAssertTrue(model.canRequestUpdateCheck)
         model.updateState = .failed("Offline")
-        XCTAssertEqual(model.updateActionTitle, "更新失败 · 重试")
+        XCTAssertEqual(model.updateActionTitle, "重试更新")
         XCTAssertTrue(model.canRequestUpdateCheck)
     }
 

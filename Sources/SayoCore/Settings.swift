@@ -57,7 +57,7 @@ public extension SayoError {
         case .permissionRequired:
             return language.text("Enable Accessibility for Sayo in System Settings.", "请在系统设置中为 Sayo 启用辅助功能权限。")
         case .missingConfiguration:
-            return language.text("Add your model and API key in Settings → Language Model.", "请在设置 → 语言模型中配置模型和 API Key。")
+            return language.text("Open Text services in Settings.\nAdd a service and enter your key.", "请在设置中打开“翻译服务”。\n添加服务并填写密钥。")
         case .invalidResponse:
             return language.text("The model returned no usable text. Please try again.", "模型没有返回可用文本，请重试。")
         case .network(let message):
@@ -312,8 +312,7 @@ public struct TranslationShortcutConflict: LocalizedError {
     public var language: InterfaceLanguage
     public var errorDescription: String? {
         language.text(
-            "Choose a second-language shortcut different from Invoke, Copy, and Replace.",
-            "第二语言快捷键不能与唤起、复制或替换快捷键相同。"
+            "The other-language shortcut must differ from rewrite, copy, and replace shortcuts.", "另一语言的按键不能与其他操作相同。"
         )
     }
 }
