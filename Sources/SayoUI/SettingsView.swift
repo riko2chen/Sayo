@@ -460,25 +460,28 @@ public struct SettingsView: View {
                 Text(t("Common questions", "常见问题"))
                     .font(.system(size: 10, weight: .semibold)).tracking(1.3)
                 aboutQuestion(
-                    t("The icon's story", "图标故事"),
+                    t("Where does the icon come from?", "图标的来源？"),
                     answer: t(
-                        "The icon is a little chameleon.\nIts appearance changes. It stays itself.", "图标是一只小变色龙。\n外表会变，自己不变。"
+                        "The icon is a little chameleon. Among nature's light, shadows, and greenery, it quietly changes its appearance, but it is still a little chameleon.",
+                        "图标是一只小变色龙，在大自然的光影和草木之间，它会悄悄改变自己的外表，但这不影响它依然是一只小变色龙"
                     ),
                     identifier: "about-question-icon"
                 )
                 Divider()
                 aboutQuestion(
-                    t("Your text and privacy", "文字隐私"),
+                    t("How is my data privacy protected?", "我的数据隐私如何保护"),
                     answer: t(
-                        "Sayo's source code is public.\nKeys are not saved in the settings file.\nYour chosen service processes your text.\nThat service's privacy policy applies.\nYou can also choose a service that runs on your Mac.", "Sayo 的代码公开可查。\n设置文件不保存密钥。\n文字会交给你选择的服务处理。\n隐私规则以该服务的说明为准。\n也可选择在本机处理的服务。"
+                        "Sayo is open source, and API keys are not saved in its configuration. Text you translate is sent to the model you configure, so that model's privacy policy applies. You can consider a local offline model, such as Chrome's built-in Gemini Nano or Hy-MT2-1.8B; both work well.",
+                        "Sayo 是开源的，并且配置里不会保存 API KEY。翻译的内容会发送给用户配置的模型，所以遵循对应模型的隐私政策。可以考虑用本地的离线模型，例如Chrome自带的Gemini Nano，或者 Hy-MT2-1.8B，都有不错的效果。"
                     ),
                     identifier: "about-question-privacy"
                 )
                 Divider()
                 aboutQuestion(
-                    t("Usage costs", "使用费用"),
+                    t("Does long-term use cost much?", "长期使用这个的话，费用高吗？"),
                     answer: t(
-                        "Costs depend on your chosen service and how much you use it.\nCheck that service's current pricing.\nYou can also choose a service that runs on your Mac.", "费用取决于所选服务和用量。\n具体价格请查看服务商说明。\n也可选择在本机处理的服务。"
+                        "If you choose the qwen-3.7-flash model, one million input tokens cost only ¥0.2, and each translation costs about ¥0.00003. At a normal typing pace, the estimated cost is less than ¥1 per year, making it exceptionally affordable.\n\nIf you want a completely free model whose data never leaves your computer, we recommend downloading the open-source Hy-MT2-1.8B Q4_K_M model. Once running, it uses very little memory and can keep translation times to around one second.",
+                        "假设选择的是 qwen-3.7-flash 模型，每百万 token 的输入才0.2元，每次翻译大约花费 0.00003 元，估算下来正常打字使用的话 1 年不到 1 块钱，可以说非常非常划算了。\n\n如果想要完全免费且数据不离开电脑的模型，推荐下载 Hy-MT2-1.8B Q4_K_M 这个开源模型，运行之后很低的内存占用，且翻译速度可以保持在大约1秒内。"
                     ),
                     identifier: "about-question-cost"
                 )
