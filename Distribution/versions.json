@@ -42,5 +42,11 @@
       "lobehub-provider-icons-20261008",
       "plain-settings-copy-20261008"
     ]
+  },
+  {
+    "version": "0.2.5",
+    "updates": [
+      "restore-about-faq-copy-20261009"
+    ]
   }
 ]

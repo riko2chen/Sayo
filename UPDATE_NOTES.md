@@ -1,5 +1,15 @@
 # Sayo update notes
 
+## 0.2.5
+
+### English
+
+- Restore the original three About-page questions and answers in English and Simplified Chinese.
+
+### 简体中文
+
+- 恢复“关于”页三个常见问题及回答的原始中英文文案。
+
 ## 0.2.4
 
 ### English
