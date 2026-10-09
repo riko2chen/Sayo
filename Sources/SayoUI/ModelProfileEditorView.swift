@@ -44,8 +44,7 @@ import SayoCore
         }
         guard configuration.provider == .chromeNano || !configuration.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !configuration.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = parent.text("Enter a Base URL and model name before saving.",
-                                       "保存前请填写 Base URL 和模型名称。")
+            errorMessage = parent.text("Enter the service address and model name before saving.", "请先填写服务地址和模型名称。")
             return false
         }
         guard parent.commitModelProfile(profileID, configuration: configuration, apiKey: draft.apiKey) else {
@@ -81,7 +80,7 @@ public struct ModelProfileEditorView: View {
             HStack(spacing: 14) {
                 ProviderBadge(provider: draft.settings.llm.provider, size: 44)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(session.isNew ? t("Add model", "新增模型") : t("Edit model", "编辑模型"))
+                    Text(session.isNew ? t("Add service", "添加服务") : t("Edit service", "编辑服务"))
                         .font(.system(size: 23, weight: .semibold))
                     Text(providerName)
                         .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
@@ -89,7 +88,7 @@ public struct ModelProfileEditorView: View {
                 Spacer()
                 if let website = draft.settings.llm.provider.homepageURL {
                     Link(destination: website) {
-                        Label(t("Website", "官网"), systemImage: "arrow.up.right")
+                        Label(t("Official website", "官方网站"), systemImage: "arrow.up.right")
                             .font(.system(size: 12))
                     }
                 }
@@ -100,9 +99,9 @@ public struct ModelProfileEditorView: View {
                         if draft.settings.llm.provider == .chromeNano {
                             nanoIntroduction
                         } else {
-                            field(t("API format", "API 格式")) {
+                            field(t("Connection type", "连接类型")) {
                                 VStack(alignment: .leading, spacing: 9) {
-                                    SayoSegmentedControl(title: t("API format", "API 格式"),
+                                    SayoSegmentedControl(title: t("Connection type", "连接类型"),
                                         options: ModelAPIFormat.allCases, selection: Binding(
                                         get: { draft.settings.llm.resolvedAPIFormat },
                                         set: { draft.settings.llm.apiFormat = $0 }
@@ -112,23 +111,23 @@ public struct ModelProfileEditorView: View {
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
-                            field("Base URL") {
+                            field(t("Service address", "服务地址")) {
                                 TextField(draft.settings.llm.provider == .custom
                                     ? "https://api.example.com/v1" : draft.settings.llm.provider.defaultBaseURL,
                                     text: $draft.settings.llm.baseURL)
                                     .accessibilityIdentifier("editor-base-url")
                             }
-                            field("API Key") {
+                            field(t("Service key", "服务密钥")) {
                                 VStack(alignment: .leading, spacing: 7) {
                                     SecureField("sk-…", text: $draft.apiKey)
                                         .accessibilityIdentifier("editor-api-key")
-                                    Text(t("Saved securely in this Mac's Keychain.", "密钥安全保存在本机的 macOS 钥匙串中。"))
+                                    Text(t("Your key is saved in this Mac's Keychain.", "密钥保存在本机系统钥匙串。"))
                                         .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                                 }
                             }
-                            field(t("Model", "模型")) {
+                            field(t("Model name", "模型名称")) {
                                 VStack(alignment: .leading, spacing: 9) {
-                                    TextField(t("Enter a model name", "输入模型名称"), text: $draft.settings.llm.model)
+                                    TextField(t("Enter the model name", "填写模型名称"), text: $draft.settings.llm.model)
                                         .accessibilityIdentifier("editor-model-name")
                                     HStack(spacing: 8) {
                                         if !draft.availableModels.isEmpty {
@@ -175,11 +174,11 @@ public struct ModelProfileEditorView: View {
             }
             Divider()
             HStack(spacing: 10) {
-                Text(t("Use this model after saving.", "保存后使用此模型。"))
+                Text(t("Use this service as soon as you save it.", "保存后，立即使用此服务。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 Spacer()
                 Button(t("Cancel", "取消"), action: onCancel).keyboardShortcut(.cancelAction)
-                Button(t("Save model", "保存模型")) {
+                Button(t("Save service", "保存服务")) {
                     if session.save() { onSaved() }
                 }
                 .buttonStyle(SayoButtonStyle(prominent: true))
@@ -205,10 +204,10 @@ public struct ModelProfileEditorView: View {
 
     private var formatDescription: String {
         switch draft.settings.llm.resolvedAPIFormat {
-        case .chatCompletions: return t("Chat Completions · Supported by most compatible services.", "Chat Completions · 适用于大多数兼容 OpenAI 的服务。")
-        case .responses: return t("Responses · For services using the OpenAI Responses API.", "适用于提供 OpenAI Responses 接口的服务。")
-        case .anthropic: return t("Messages · For Claude and Anthropic-compatible services.", "Messages · 适用于 Claude 及兼容 Anthropic 的服务。")
-        case .gemini: return t("GenerateContent · For Google Gemini-compatible services.", "GenerateContent · 适用于兼容 Google Gemini 的服务。")
+        case .chatCompletions: return t("Chat Completions\nFor most services compatible with OpenAI.", "Chat Completions\n适用于多数兼容 OpenAI 的服务。")
+        case .responses: return t("For services that provide OpenAI Responses.", "适用于提供 Responses 的服务。")
+        case .anthropic: return t("Messages\nFor Claude and services compatible with Anthropic.", "Messages\n适用于 Claude 及兼容服务。")
+        case .gemini: return t("GenerateContent\nFor services compatible with Google Gemini.", "GenerateContent\n适用于兼容 Gemini 的服务。")
         }
     }
     private var providerName: String {
@@ -222,31 +221,24 @@ public struct ModelProfileEditorView: View {
 
     private var nanoIntroduction: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(t("On-device AI · No API key", "本地 AI · 无需 API Key"), systemImage: "desktopcomputer")
+            Label(t("On this Mac", "本机处理"), systemImage: "desktopcomputer")
                 .font(.system(size: 14, weight: .medium))
-            Text(t("Gemini Nano is Google's small AI model, downloaded and managed by Chrome for its built-in AI features.",
-                   "Gemini Nano 是 Google 的轻量 AI 模型，由 Chrome 下载和管理，供浏览器内置 AI 功能使用。"))
-            Text(t("Sayo processes your text on this Mac through Chrome. Connecting opens an extra local Chrome page; keep it open while using the model.",
-                   "Sayo 通过 Chrome 在本机处理文本。连接时会额外打开一个 Chrome 本机页面，使用期间需保持开启。"))
-            Text(t("Official input and output languages: English, Japanese, Spanish, German and French. Sayo also allows Chinese and other languages as experimental use; translations may be incomplete or inaccurate.",
-                   "官方支持的输入和输出语言：英语、日语、西班牙语、德语、法语。中文等其他语言可作为实验性功能使用，Sayo 不作语言限制，但翻译可能不完整或不准确。"))
+            Text(t("Provided by Google. Downloaded and managed by Chrome.", "由谷歌提供，浏览器下载和管理。"))
+            Text(t("Chrome processes your text on this Mac.\nConnecting opens a local page.\nKeep it open while you use this service.", "文字由本机浏览器处理。\n连接时会打开一个页面。\n使用期间，请保持页面开启。"))
+            Text(t("Supported languages: English, Japanese, and Spanish.\nGerman and French are also supported.\nChinese and other languages are experimental.\nResults may be incomplete or inaccurate.", "正式支持英语、日语、西班牙语。\n也支持德语和法语。\n中文等其他语言仍在试用。\n结果可能不完整或不准确。"))
                 .foregroundStyle(SayoStyle.ink)
                 .accessibilityIdentifier("nano-language-limits")
-            DisclosureGroup(t("More about the model and connection", "模型来源、连接方式与限制"),
+            DisclosureGroup(t("How to use it", "使用说明"),
                             isExpanded: $showingNanoDetails) {
                 VStack(alignment: .leading, spacing: 12) {
-                    nanoDetail(t("Why is it on my Mac?", "为什么电脑上会有？"),
-                               t("Chrome's AI features may have already downloaded it as “Optimization Guide On Device Model”. Sayo reuses the model through Chrome; not every Mac has it installed.",
-                                 "Chrome 的 AI 功能可能已下载它，对应组件名为「Optimization Guide On Device Model」。Sayo 会通过 Chrome 复用它，并非每台电脑都已安装。"))
-                    nanoDetail(t("What stays local?", "是否完全本地处理？"),
-                               t("This connection sends text only to Chrome on this Mac and returns the result to Sayo. It does not call a cloud model. Chrome still needs internet access to download or update the model.",
-                                 "此连接只把文本交给本机 Chrome 推理，再将结果传回 Sayo，不调用云端模型。模型下载和更新仍需由 Chrome 联网完成。"))
-                    nanoDetail(t("Do I need to build a website?", "需要自己搭建网页吗？"),
-                               t("No. Sayo temporarily provides the local connection page; nothing needs to be hosted or published. Click Connect model on that page, then return here to test. Reconnect if the tab or Chrome closes, or Sayo restarts.",
-                                 "不需要。连接页由 Sayo 临时在本机提供，无需搭建或发布网站。在页面点击「连接模型」，再回到这里测试。关闭标签页、退出 Chrome 或重启 Sayo 后需重新连接。"))
-                    nanoDetail(t("Other limits", "还有哪些限制？"),
-                               t("Requires Chrome 148 or later and compatible hardware, free space and browser policies. The first connection may download several GB. Speed and text length are limited by the device and model. Test the connection to check availability.",
-                                 "需要 Chrome 148 或更高版本，并满足硬件、可用空间和浏览器策略要求。首次连接可能下载数 GB；处理速度和文本长度受设备及模型限制。请通过测试连接检查可用性。"))
+                    nanoDetail(t("Where it comes from", "下载来源"),
+                               t("Chrome may have already downloaded it.\nSome Macs need to download it first.\nThe component is named:\nOptimization Guide On Device Model", "浏览器可能已经下载了它。\n部分电脑需要先下载。\n下载组件名称：\nOptimization Guide On Device Model"))
+                    nanoDetail(t("Where your text goes", "文字去向"),
+                               t("Your text is processed only on this Mac.\nDownloads and updates still need an internet connection.", "文字只在本机处理。\n下载和更新仍需联网。"))
+                    nanoDetail(t("Connection steps", "连接步骤"),
+                               t("You do not need to build a website.\nClick Connect model on the page that opens.\nReturn here and click Test connection.\nReconnect if the page, Chrome, or Sayo closes.", "无需自己搭建网页。\n在打开的页面点击“连接模型”。\n返回此处，点击“测试连接”。\n页面或应用关闭后，需重新连接。"))
+                    nanoDetail(t("Requirements", "使用条件"),
+                               t("Requires Chrome 148 or later.\nYour hardware, free space, and browser settings must support it.\nThe first download may be several GB.\nSpeed and text length depend on the device and model.\nTest the connection to check availability.", "需要 Chrome 148 或更高版本。\n设备、空间和浏览器设置需符合要求。\n首次下载可能占用数 GB。\n速度和文字长度受设备限制。\n请先测试是否可用。"))
                 }
                 .padding(.top, 8)
             }

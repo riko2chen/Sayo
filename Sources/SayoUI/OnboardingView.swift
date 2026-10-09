@@ -116,8 +116,8 @@ public struct OnboardingView: View {
             }
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "lightbulb").foregroundStyle(SayoStyle.accent)
-                Text(t("Choose a target language and type naturally in an input field. Trigger a rewrite with your selected mode; when a result bubble appears, copy or replace it. Silent mode replaces directly. If you have not connected a model, visit Settings → Language Model later.",
-                       "选择目标语言，在输入框中自然输入，再按所选模式触发改写。出现结果气泡时可复制或替换；静默模式会直接替换。如尚未连接模型，可稍后前往“设置 → 语言模型”配置。"))
+                Text(t("Choose a language and type in an input field.\nStart a rewrite using your selected mode.\nCopy or replace the result in the bubble.\nReplace directly uses a shortcut to replace the original.\nYou can add a service later in Settings → Text services.",
+                       "选择语言，在输入框中输入文字。\n按所选方式开始改写。\n气泡中的结果可复制或替换。\n“直接替换”按快捷键后替换原文。\n稍后可在设置中添加服务。\n位置：“翻译服务”。"))
                     .font(.system(size: 12)).foregroundStyle(SayoStyle.muted).fixedSize(horizontal: false, vertical: true)
             }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(SayoStyle.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))

@@ -10,7 +10,7 @@ struct ModelConnectionTestView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(t("Connection test", "连接测试")).font(.system(size: 13, weight: .semibold))
-                    Text(t("Check the response and measure total latency.", "检查模型响应，并测量完整请求耗时。"))
+                    Text(t("Check that it works and see how long a response takes.", "检查能否使用，以及等待多久。"))
                         .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 }
                 Spacer(minLength: 8)
@@ -23,19 +23,19 @@ struct ModelConnectionTestView: View {
             }
             if model.settings.llm.provider == .chromeNano {
                 HStack(spacing: 8) {
-                    Text(t("Current connection status:", "当前连接状态："))
+                    Text(t("Connection status", "连接状态"))
                     Text(model.nanoConnected ? t("Connected", "已连接") : t("Not connected", "未连接"))
                         .foregroundStyle(model.nanoConnected ? SayoStyle.green : SayoStyle.muted)
                         .accessibilityIdentifier("nano-connection-status")
                     Button { model.refreshNanoConnection() } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .help(t("Refresh connection status", "刷新连接状态"))
-                    .accessibilityLabel(t("Refresh connection status", "刷新连接状态"))
+                    .help(t("Refresh status", "刷新状态"))
+                    .accessibilityLabel(t("Refresh status", "刷新状态"))
                     .accessibilityIdentifier("refresh-nano-connection")
                 }
                 .font(.system(size: 12))
-                Button(t("Connect Chrome…", "连接 Chrome…")) { model.connectNano() }
+                Button(t("Open connection…", "打开连接")) { model.connectNano() }
                     .disabled(model.connectingNano || model.testingConnection)
                     .accessibilityIdentifier("connect-chrome-nano")
             }
@@ -47,7 +47,7 @@ struct ModelConnectionTestView: View {
                         Image(systemName: model.connectionSucceeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                             .foregroundStyle(model.connectionSucceeded ? SayoStyle.green : Color.orange)
                     }
-                    Text(model.testingConnection ? t("Waiting for the model…", "正在等待模型响应…") : model.connectionResult)
+                    Text(model.testingConnection ? t("Waiting for a result…", "正在等待结果…") : model.connectionResult)
                         .font(.system(size: 12)).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("connection-test-result")
@@ -65,10 +65,10 @@ struct ModelConnectionTestView: View {
             }
             if !model.connectionOriginal.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {
-                    sentence(t("Original", "原语句"), model.connectionOriginal, id: "connection-original")
+                    sentence(t("Original", "原文"), model.connectionOriginal, id: "connection-original")
                     Divider()
-                    sentence(t("Processed", "处理后"), model.testingConnection ? t("Processing…", "处理中…") :
-                             model.connectionSucceeded ? model.connectionOutput : t("No result (test failed)", "未生成（测试失败）"),
+                    sentence(t("Rewritten text", "改写结果"), model.testingConnection ? t("Processing…", "处理中…") :
+                             model.connectionSucceeded ? model.connectionOutput : t("The test failed. No result was generated.", "测试失败，未生成结果。"),
                              id: "connection-output")
                 }
                 .padding(14).background(SayoStyle.field.opacity(0.7), in: RoundedRectangle(cornerRadius: 9))
@@ -91,9 +91,9 @@ struct ModelConnectionTestView: View {
     }
 
     private func elapsedDescription(_ milliseconds: UInt64) -> String {
-        if milliseconds < 1_000 { return t("Elapsed: \(milliseconds) ms", "耗时：\(milliseconds) 毫秒") }
+        if milliseconds < 1_000 { return t("Time: \(milliseconds) ms", "用时：\(milliseconds) 毫秒") }
         let seconds = String(format: "%.2f", Double(milliseconds) / 1_000)
-        return t("Elapsed: \(seconds) s", "耗时：\(seconds) 秒")
+        return t("Time: \(seconds) s", "用时：\(seconds) 秒")
     }
 
     private func sentence(_ title: String, _ content: String, id: String) -> some View {

@@ -16,8 +16,7 @@ struct AboutAuthorView: View {
                     .foregroundStyle(SayoStyle.muted)
                 Text("@Riko")
                     .font(.system(size: 20, weight: .semibold))
-                Text(t("Follow along for new tools and updates, or get in touch by email.",
-                       "关注新工具与更新，也欢迎通过邮箱交流。"))
+                Text(t("Follow new tools and updates, or get in touch by email.", "关注新工具，也欢迎来信交流。"))
                     .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -28,13 +27,13 @@ struct AboutAuthorView: View {
                                symbol: "envelope", trailingSymbol: "chevron.right")
                 }
                 .accessibilityIdentifier("author-email")
-                .accessibilityHint(t("Show and copy the email address", "查看并复制邮箱地址"))
+                .accessibilityHint(t("View and copy the email address.", "查看并复制邮箱。"))
                 .popover(isPresented: $showingEmail, arrowEdge: .top) { emailPopover }
                 contactDivider
-                contactLink(t("Project homepage", "项目主页"), detail: "sayo.rikolab.com",
+                contactLink(t("Official website", "官方网站"), detail: "sayo.rikolab.com",
                             symbol: "globe", url: "https://sayo.rikolab.com/", identifier: "author-homepage")
                 contactDivider
-                contactLink(t("Source code", "源代码"), detail: "GitHub · riko2chen/Sayo",
+                contactLink(t("View source", "查看源码"), detail: "GitHub · riko2chen/Sayo",
                             symbol: "chevron.left.forwardslash.chevron.right",
                             url: "https://github.com/riko2chen/Sayo", identifier: "author-github")
                 contactDivider
@@ -88,7 +87,7 @@ struct AboutAuthorView: View {
             contactRow(title, detail: detail, symbol: symbol)
         }
         .accessibilityIdentifier(identifier)
-        .accessibilityHint(t("Open in your browser", "在浏览器中打开"))
+        .accessibilityHint(t("Open in your browser.", "用浏览器打开。"))
     }
 
     private var emailPopover: some View {
@@ -96,7 +95,7 @@ struct AboutAuthorView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(t("Email the author", "联系作者"))
                     .font(.system(size: 15, weight: .semibold))
-                Text(t("Feedback, ideas, or just a hello.", "反馈、建议，或只是打个招呼。"))
+                Text(t("Share an idea, report a problem, or say hello.", "提建议、报问题，或打个招呼。"))
                     .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
             }
             Text(email)
@@ -110,7 +109,7 @@ struct AboutAuthorView: View {
                 NSPasteboard.general.clearContents()
                 copiedEmail = NSPasteboard.general.setString(email, forType: .string)
             } label: {
-                Label(copiedEmail ? t("Copied", "已复制") : t("Copy email address", "复制邮箱地址"),
+                Label(copiedEmail ? t("Copied", "已复制") : t("Copy email", "复制邮箱"),
                       systemImage: copiedEmail ? "checkmark" : "doc.on.doc")
                     .frame(maxWidth: .infinity)
             }

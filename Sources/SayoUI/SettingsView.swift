@@ -75,7 +75,7 @@ public struct SettingsView: View {
             case .saved:
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .semibold))
-                Text(t("Saved", "保存完毕"))
+                Text(t("Saved", "已保存"))
             case .failed:
                 Image(systemName: "exclamationmark.circle")
                     .font(.system(size: 11, weight: .medium))
@@ -96,11 +96,11 @@ public struct SettingsView: View {
                 }
             }
             .padding(.horizontal, 21).padding(.top, 24).padding(.bottom, 30)
-            sidebarLabel(t("WORKSPACE", "工作区"))
+            sidebarLabel(t("Everyday", "常用设置"))
             ForEach(SettingsPage.standardPages(for: model.features).filter { [.general, .model, .rewriting].contains($0) }) { item in
                 sidebarButton(item)
             }
-            sidebarLabel(t("TOOLS", "工具")).padding(.top, 20)
+            sidebarLabel(t("Tools", "使用设置")).padding(.top, 20)
             ForEach(SettingsPage.standardPages(for: model.features).filter { [.shortcuts, .appAccess, .terminal].contains($0) }) { item in
                 sidebarButton(item)
             }
@@ -118,7 +118,7 @@ public struct SettingsView: View {
                 } else {
                     Button { model.permissionAction?() } label: { accessibilityStatus }
                         .buttonStyle(.plain)
-                        .help(t("Enable Accessibility…", "启用辅助功能…"))
+                        .help(t("Enable access…", "开启权限"))
                 }
             }.font(.system(size: 10, weight: .medium)).padding(20)
         }.frame(width: 190).background(SayoStyle.field.opacity(0.65))
@@ -131,7 +131,7 @@ public struct SettingsView: View {
     private var accessibilityStatus: some View {
         HStack(spacing: 7) {
             Circle().fill(model.accessibilityGranted ? SayoStyle.green : Color.orange).frame(width: 6, height: 6)
-            Text(model.accessibilityGranted ? t("Accessibility enabled", "辅助功能已启用") : t("Accessibility disabled", "辅助功能未启用"))
+            Text(model.accessibilityGranted ? t("Access enabled", "权限已开") : t("Access needed", "权限未开"))
         }.contentShape(Rectangle())
     }
     private func sidebarButton(_ item: SettingsPage) -> some View {
@@ -157,16 +157,16 @@ public struct SettingsView: View {
         Group {
             if model.supportsFocusedInput && !model.accessibilityGranted {
                 SayoCard {
-                    SayoSettingRow(title: t("Let Sayo work where you type", "让 Sayo 在你输入的地方工作"),
-                                   detail: t("Accessibility lets Sayo read and replace the active input.", "开启辅助功能权限，即可读取并替换当前输入框内容。")) {
-                        Button(t("Enable…", "启用…")) { model.permissionAction?() }
+                    SayoSettingRow(title: t("Text access", "输入权限"),
+                                   detail: t("Allow Sayo to read and replace text where you type.", "开启后，可读取并替换输入内容。")) {
+                        Button(t("Enable access…", "开启权限")) { model.permissionAction?() }
                             .buttonStyle(SayoButtonStyle(prominent: true))
                     }
                 }
             }
             SayoCard {
                 sectionLabel(t("Languages", "语言"))
-                SayoSettingRow(title: t("Interface language", "界面语言"), detail: t("The language Sayo speaks to you.", "Sayo 界面的显示语言。")) {
+                SayoSettingRow(title: t("Interface language", "界面语言"), detail: t("The language used for menus and buttons.", "菜单和按钮使用的语言。")) {
                     Picker("", selection: $model.settings.interfaceLanguage) {
                         ForEach(InterfaceLanguage.allCases, id: \.self) { language in
                             Text(language.displayName).tag(language)
@@ -175,66 +175,65 @@ public struct SettingsView: View {
                         .accessibilityLabel(t("Interface language", "界面语言"))
                 }
                 Divider()
-                SayoSettingRow(title: t("First language", "第一语言"), detail: t("Your default translation destination.", "日常翻译与改写使用的目标语言。")) {
+                SayoSettingRow(title: t("Main language", "常用语言"), detail: t("Your usual language for translations and rewrites.", "平时翻译和改写成这种语言。")) {
                     Picker("", selection: $model.settings.targetLanguage) {
                         ForEach(TargetLanguage.allCases, id: \.self) { language in
                             Text(model.targetLanguageName(language)).tag(language)
                         }
                     }.labelsHidden().frame(width: 180)
-                        .accessibilityLabel(t("First language", "第一语言"))
+                        .accessibilityLabel(t("Main language", "常用语言"))
                 }
                 if model.supportsFocusedInput {
                     Divider()
-                    SayoSettingRow(title: t("Second language", "第二语言"), detail: t("Use a separate shortcut to translate into this language.", "通过独立快捷键，快速翻译为另一种语言。")) {
+                    SayoSettingRow(title: t("Other language", "另一语言"), detail: t("Use a separate shortcut to translate into this language.", "按专用快捷键，翻译成这种语言。")) {
                         Picker("", selection: $model.settings.secondaryTargetLanguage) {
                             ForEach(TargetLanguage.allCases, id: \.self) { language in
                                 Text(model.targetLanguageName(language)).tag(language)
                             }
                         }.labelsHidden().frame(width: 180)
-                            .accessibilityLabel(t("Second language", "第二语言"))
+                            .accessibilityLabel(t("Other language", "另一语言"))
                     }
                     HStack(spacing: 6) {
                         let shortcut = model.settings.secondaryShortcut?.displayLabel(language: model.settings.interfaceLanguage) ?? t("Not set", "未设置")
                         Image(systemName: "keyboard")
-                        Text(t("Second-language shortcut: \(shortcut)", "第二语言快捷键：\(shortcut)"))
+                        Text(t("Other-language shortcut: \(shortcut)", "专用快捷键：\(shortcut)"))
                         Spacer()
-                        pageLink(t("Set shortcut", "设置快捷键"), to: .shortcuts)
+                        pageLink(t("Set shortcut", "设置按键"), to: .shortcuts)
                     }
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                     .padding(11).background(SayoStyle.field, in: RoundedRectangle(cornerRadius: 8))
                 }
             }
             SayoCard {
-                sectionLabel(t("App behavior", "应用行为"))
-                toggleRow(t("Open Sayo at login", "登录时启动 Sayo"), isOn: $model.settings.launchAtLogin,
-                          detail: t("Ready whenever you start writing.", "每次打开电脑，即可开始使用。"))
+                sectionLabel(t("Startup and appearance", "启动外观"))
+                toggleRow(t("Open at login", "登录启动"), isOn: $model.settings.launchAtLogin,
+                          detail: t("Start Sayo when you log in to your Mac.", "登录电脑后，自动启动。"))
                 Divider()
-                SayoSettingRow(title: t("Status bar icon", "状态栏图标"),
-                               detail: t("Monochrome adapts to your menu bar appearance.", "单色图标会自动适应菜单栏的深浅外观。")) {
+                SayoSettingRow(title: t("Menu bar icon", "菜单图标"),
+                               detail: t("The monochrome icon follows your menu bar's appearance.", "单色图标随菜单栏深浅变化。")) {
                     Picker("", selection: $model.settings.statusBarIconStyle) {
                         Text(t("Chameleon", "变色龙")).tag(StatusBarIconStyle.brand)
-                        Text(t("Monochrome", "单色（macOS）")).tag(StatusBarIconStyle.monochrome)
+                        Text(t("Monochrome", "单色")).tag(StatusBarIconStyle.monochrome)
                     }.labelsHidden().frame(width: 145)
-                        .accessibilityLabel(t("Status bar icon", "状态栏图标"))
+                        .accessibilityLabel(t("Menu bar icon", "菜单图标"))
                     StatusIconPreview(style: $model.settings.statusBarIconStyle).frame(width: 44, height: 44)
                 }
             }
             SayoCard {
-                DisclosureGroup(t("Advanced settings", "高级设置")) {
+                DisclosureGroup(t("More settings", "更多设置")) {
                     VStack(alignment: .leading, spacing: 16) {
-                        SayoSettingRow(title: t("Settings file", "配置文件")) {
-                            Button(t("Show in Finder", "在 Finder 中显示")) { model.openConfigAction?() }
+                        SayoSettingRow(title: t("Settings file", "设置文件")) {
+                            Button(t("Show in Finder", "打开位置")) { model.openConfigAction?() }
                         }
                         Text(model.configPath).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
                             .foregroundStyle(SayoStyle.muted)
-                        Text(t("API keys stay in macOS Keychain. To migrate, quit Sayo, copy this file to the same location, reopen Sayo, and re-enter API keys on a new Mac.",
-                               "API Key 单独保存在 macOS 钥匙串中。迁移时先退出 Sayo，将此文件复制到相同位置后重新启动，并在新 Mac 上重新填写 API Key。"))
+                        Text(t("Keys are stored separately in Keychain.\nTo move your settings, quit Sayo first.\nCopy this file to the same location on your new Mac.\nReopen Sayo and enter your keys again.", "密钥单独保存在系统钥匙串。\n换电脑前，请先退出应用。\n将设置文件复制到相同位置。\n重新启动后，再填写密钥。"))
                             .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                         Divider()
-                        toggleRow(t("Developer mode", "开发者模式"), isOn: $model.settings.developerMode,
-                                  detail: t("Show Quick Troubleshooting in the sidebar.", "在侧栏显示快速排查。"))
+                        toggleRow(t("Troubleshooting tools", "排查工具"), isOn: $model.settings.developerMode,
+                                  detail: t("Show Troubleshooting in the sidebar.", "在侧栏显示“问题排查”。"))
                         Divider()
-                        Button(t("Replay welcome tour", "重新查看欢迎引导")) { model.showOnboardingAction?() }
+                        Button(t("Getting started", "使用入门")) { model.showOnboardingAction?() }
                     }.padding(.top, 16)
                 }
                 .font(.system(size: 13, weight: .medium))
@@ -245,7 +244,7 @@ public struct SettingsView: View {
         Group {
             if model.supportsFocusedInput {
             SayoCard {
-                sectionLabel(t("WORKING MODE", "工作模式"))
+                sectionLabel(t("How to rewrite", "操作方式"))
                 HStack(spacing: 10) {
                     ForEach(WorkingMode.allCases, id: \.self) { mode in
                         Button { model.changeWorkingMode(mode) } label: {
@@ -268,32 +267,31 @@ public struct SettingsView: View {
             }
             }
             SayoCard {
-                sectionLabel(t("PROMPT", "提示词"))
+                sectionLabel(t("Rewrite instructions", "改写要求"))
                 if model.supportsFocusedInput {
-                    SayoSegmentedControl(title: t("Translation prompt", "翻译提示词"),
+                    SayoSegmentedControl(title: t("Rewrite instructions", "改写要求"),
                         options: [TranslationDestination.primary, .secondary], selection: $promptDestination) {
-                            $0 == .primary ? t("First language", "第一语言") : t("Second language", "第二语言")
+                            $0 == .primary ? t("Main language", "常用语言") : t("Other language", "另一语言")
                         }.frame(width: 240)
                 }
                 HStack(spacing: 6) {
                     let language = model.targetLanguageName(selectedPromptLanguage)
-                    Text(t("Target: \(language). ${targetLanguage} in the prompt is replaced with it.",
-                           "目标语言：\(language)。提示词中的 ${targetLanguage} 会替换为该语言。"))
-                    pageLink(t("Change in General", "在“通用”中更改"), to: .general)
+                    Text(t("Rewrite in: \(language).\nThe language marker becomes your selected language.\nLanguage marker: ${targetLanguage}", "改写成：\(language)。\n语言标记会自动换成所选语言。\n语言标记：${targetLanguage}"))
+                    pageLink(t("Change language", "更改语言"), to: .general)
                 }.font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 TextEditor(text: selectedPrompt).font(.system(size: 13, design: .monospaced))
                     .lineSpacing(5).scrollContentBackground(.hidden).padding(12).frame(height: 270)
                     .background(SayoStyle.paper, in: RoundedRectangle(cornerRadius: 10))
-                    .accessibilityLabel(promptDestination == .primary ? t("First-language prompt", "第一语言提示词") : t("Second-language prompt", "第二语言提示词"))
+                    .accessibilityLabel(promptDestination == .primary ? t("Main-language instructions", "常用要求") : t("Other-language instructions", "另一要求"))
                 HStack {
-                    Text(t("Keep “return only the final text” for clean replacements.", "建议要求模型只返回最终文本。")) .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
+                    Text(t("Ask for only the rewritten text, with no explanation.", "建议注明：只返回改写后的文字。")) .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                     Spacer()
                     if promptDestination == .secondary {
-                        Button(t("Copy first prompt", "复制第一语言提示词")) { model.settings.secondaryPrompt = model.settings.prompt }
+                        Button(t("Copy main instructions", "复制要求")) { model.settings.secondaryPrompt = model.settings.prompt }
                     }
                     Button(t("Restore default", "恢复默认")) { selectedPrompt.wrappedValue = AppSettings.defaultPrompt }
                 }
-                DisclosureGroup(t("Effective prompt preview", "实际提示词预览")) {
+                DisclosureGroup(t("View full instructions", "查看全文")) {
                     Text(model.settings.effectivePrompt(for: promptDestination))
                         .font(.system(size: 12, design: .monospaced))
                         .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
@@ -303,14 +301,12 @@ public struct SettingsView: View {
             if model.supportsFocusedInput {
             SayoCard {
                 sectionLabel(t("REPLACEMENT", "替换方式"))
-                toggleRow(t("Character-by-character replacement", "逐字替换动画"), isOn: $model.settings.inputAnimationEnabled, detail: t(
-                    "Reveal whole-input replacements gradually in supported apps. Selected text and terminal drafts are replaced instantly. Respects macOS Reduce Motion.",
-                    "在支持的应用中逐字显示整段替换结果。选区和终端草稿仍一次性回填，并遵循 macOS 的“减少动态效果”设置。"
+                toggleRow(t("Show text gradually", "逐字显示"), isOn: $model.settings.inputAnimationEnabled, detail: t(
+                    "Show whole-input replacements gradually where supported.\nSelected text and terminal drafts are replaced at once.\nFollows the macOS Reduce Motion setting.", "支持时，整段结果逐字显示。\n选中文字和终端草稿直接替换。\n跟随系统“减少动态效果”设置。"
                 ))
                 Divider()
-                toggleRow(t("Copy/Paste compatibility fallback", "复制/粘贴兼容模式"), isOn: $model.settings.copyPasteCompatibilityEnabled, detail: t(
-                    "For apps whose input cannot be read normally. An explicit shortcut copies the current selection, then pastes the rewrite back after checking the app and window.",
-                    "用于无法正常读取输入框的应用。快捷键会复制当前选区，并在核对应用和窗口后粘贴改写结果。"
+                toggleRow(t("Use copy and paste", "复制粘贴"), isOn: $model.settings.copyPasteCompatibilityEnabled, detail: t(
+                    "For apps where Sayo cannot read text directly.\nSelect text, then press your shortcut.\nSayo checks the app and window before pasting the result.", "用于无法直接读取文字的应用。\n先选中文字，再按快捷键。\n核对应用和窗口后，粘贴结果。"
                 ))
             }
             }
@@ -324,12 +320,12 @@ public struct SettingsView: View {
         SayoCard {
             HStack(spacing: 6) {
                 let mode = model.settings.mode.title(language: model.settings.interfaceLanguage)
-                Text(t("Available actions follow the working mode: \(mode).", "可用操作随工作模式变化，当前为“\(mode)”。"))
-                pageLink(t("Change", "更改"), to: .rewriting)
+                Text(t("Current mode: \(mode).\nAvailable shortcuts depend on this mode.", "当前方式：\(mode)。\n可设按键随操作方式变化。"))
+                pageLink(t("Change mode", "更改方式"), to: .rewriting)
             }.font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
             if model.settings.mode.showsInvokeShortcut {
                 Divider()
-                shortcutRow(t("Invoke Sayo", "唤起 Sayo"), shortcut: $model.settings.invokeShortcut)
+                shortcutRow(t("Start rewriting", "开始改写"), shortcut: $model.settings.invokeShortcut)
             }
             if model.settings.mode.showsCopyShortcut {
                 Divider()
@@ -337,12 +333,12 @@ public struct SettingsView: View {
             }
             Divider()
             shortcutRow(
-                model.settings.mode == .silent ? t("Rewrite and replace", "改写并替换") : t("Replace result", "替换结果"),
+                model.settings.mode == .silent ? t("Rewrite and replace", "直接替换") : t("Replace original", "替换原文"),
                 shortcut: $model.settings.replaceShortcut
             )
             Divider()
-            shortcutRow(t("Translate to second language", "翻译为第二语言"), shortcut: $model.settings.secondaryShortcut)
-            Text(t("Unset by default. Only this shortcut starts a second-language translation; it follows the working mode.", "默认未设置。仅此快捷键可触发第二语言翻译，并遵循工作模式。"))
+            shortcutRow(t("Translate to other language", "另一语言"), shortcut: $model.settings.secondaryShortcut)
+            Text(t("Not set by default.\nOnly this shortcut translates into your other language.\nIt follows the same rewrite mode as your main language.", "默认未设置。\n仅此按键可翻译成另一语言。\n操作方式与常用语言相同。"))
                 .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
         }
     }
@@ -368,8 +364,8 @@ public struct SettingsView: View {
     private var terminal: some View {
         Group {
             SayoCard {
-                sectionLabel(t("SHELL INTEGRATION", "Shell 集成"))
-                Text(t("Rewrite commands with your Sayo shortcut.", "使用 Sayo 快捷键改写命令。"))
+                sectionLabel(t("Rewrite commands", "命令改写"))
+                Text(t("Press your Sayo shortcut to rewrite a command as you type.", "按快捷键，改写正在输入的命令。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 ForEach(TerminalShell.allCases) { shell in
                     Divider()
@@ -382,9 +378,8 @@ public struct SettingsView: View {
                 }
             }
             SayoCard {
-                sectionLabel(t("CLI EDITORS", "CLI 编辑器"))
-                Text(t("Install Sayo for each CLI whose drafts you want to rewrite. Restart your terminal after installation for the integration to take effect.",
-                       "为需要使用 Sayo 改写草稿的 CLI 安装集成。安装后需要重启终端才能生效。"))
+                sectionLabel(t("Rewrite drafts", "草稿改写"))
+                Text(t("Install draft rewriting for each tool you use below.\nRestart your terminal after installation.", "为下列工具安装草稿改写功能。\n安装后，重启终端即可使用。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 ForEach(CLIEditorProgram.allCases, id: \.self) { program in
                     Divider()
@@ -406,7 +401,7 @@ public struct SettingsView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(name).font(.system(size: 13, weight: .medium))
-                Text(installed ? t("Installed", "已安装") : t("Default behavior", "默认行为"))
+                Text(installed ? t("Installed", "已安装") : t("Not installed", "未安装"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
             }
             Spacer()
@@ -422,12 +417,11 @@ public struct SettingsView: View {
         Group {
             SayoCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(t("Change how you say it,\nnot what you mean.", "改变表达，\n不改变你想表达的。"))
+                    Text(t("New words. Same meaning.", "换种说法，心意如初。"))
                         .font(.system(size: 28, weight: .semibold))
                         .accessibilityIdentifier("about-slogan")
                     Text(t(
-                        "You don't have to learn before you begin writing. You truly learn through the act of writing, again and again.",
-                        "你不必先学会，才开始落笔，你会在不断书写的过程中，真正学会。"
+                        "Start writing. Get better as you go.", "从开始写，到越写越好。"
                     ))
                     .font(.system(size: 14))
                     .foregroundStyle(SayoStyle.muted)
@@ -449,45 +443,42 @@ public struct SettingsView: View {
                 }
             }
             SayoCard {
-                sectionLabel(t("UPDATES", "更新"))
-                Toggle(t("Automatically download updates", "自动下载更新"), isOn: $model.settings.automaticallyDownloadsUpdates)
+                sectionLabel(t("Software updates", "软件更新"))
+                Toggle(t("Download automatically", "自动下载"), isOn: $model.settings.automaticallyDownloadsUpdates)
                     .toggleStyle(.checkbox)
                     .accessibilityIdentifier("automatically-download-updates")
-                Text(t("Download ahead of time. Install when ready, or when you quit Sayo.", "提前下载更新，准备好后可点击更新，或在退出 Sayo 时安装。"))
+                Text(t("Download updates ahead of time.\nInstall now, or when you quit Sayo.", "提前下载新版。\n可立即安装，或退出时安装。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 Divider()
-                Toggle(t("Automatically check for updates", "自动检查更新"), isOn: $model.settings.automaticallyChecksForUpdates)
+                Toggle(t("Check automatically", "自动检查"), isOn: $model.settings.automaticallyChecksForUpdates)
                     .toggleStyle(.checkbox)
                     .accessibilityIdentifier("automatically-check-updates")
-                Text(t("Check when Sayo opens, at most once an hour. Manual checks always run immediately.", "打开 Sayo 时检查，每小时最多自动检查一次。手动检查始终立即执行。"))
+                Text(t("Check on startup, at most once an hour.\nClick Check for Updates to check immediately.", "启动时检查，每小时最多一次。\n点击“检查更新”可立即检查。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
             }
             SayoCard {
-                Text(t("QUESTIONS & ANSWERS", "问与答"))
+                Text(t("Common questions", "常见问题"))
                     .font(.system(size: 10, weight: .semibold)).tracking(1.3)
                 aboutQuestion(
-                    t("Where does the icon come from?", "图标的来源？"),
+                    t("The icon's story", "图标故事"),
                     answer: t(
-                        "The icon is a little chameleon. Among nature's light, shadows, and greenery, it quietly changes its appearance, but it is still a little chameleon.",
-                        "图标是一只小变色龙，在大自然的光影和草木之间，它会悄悄改变自己的外表，但这不影响它依然是一只小变色龙"
+                        "The icon is a little chameleon.\nIts appearance changes. It stays itself.", "图标是一只小变色龙。\n外表会变，自己不变。"
                     ),
                     identifier: "about-question-icon"
                 )
                 Divider()
                 aboutQuestion(
-                    t("How is my data privacy protected?", "我的数据隐私如何保护"),
+                    t("Your text and privacy", "文字隐私"),
                     answer: t(
-                        "Sayo is open source, and API keys are not saved in its configuration. Text you translate is sent to the model you configure, so that model's privacy policy applies. You can consider a local offline model, such as Chrome's built-in Gemini Nano or Hy-MT2-1.8B; both work well.",
-                        "Sayo 是开源的，并且配置里不会保存 API KEY。翻译的内容会发送给用户配置的模型，所以遵循对应模型的隐私政策。可以考虑用本地的离线模型，例如Chrome自带的Gemini Nano，或者 Hy-MT2-1.8B，都有不错的效果。"
+                        "Sayo's source code is public.\nKeys are not saved in the settings file.\nYour chosen service processes your text.\nThat service's privacy policy applies.\nYou can also choose a service that runs on your Mac.", "Sayo 的代码公开可查。\n设置文件不保存密钥。\n文字会交给你选择的服务处理。\n隐私规则以该服务的说明为准。\n也可选择在本机处理的服务。"
                     ),
                     identifier: "about-question-privacy"
                 )
                 Divider()
                 aboutQuestion(
-                    t("Does long-term use cost much?", "长期使用这个的话，费用高吗？"),
+                    t("Usage costs", "使用费用"),
                     answer: t(
-                        "If you choose the qwen-3.7-flash model, one million input tokens cost only ¥0.2, and each translation costs about ¥0.00003. At a normal typing pace, the estimated cost is less than ¥1 per year, making it exceptionally affordable.\n\nIf you want a completely free model whose data never leaves your computer, we recommend downloading the open-source Hy-MT2-1.8B Q4_K_M model. Once running, it uses very little memory and can keep translation times to around one second.",
-                        "假设选择的是 qwen-3.7-flash 模型，每百万 token 的输入才0.2元，每次翻译大约花费 0.00003 元，估算下来正常打字使用的话 1 年不到 1 块钱，可以说非常非常划算了。\n\n如果想要完全免费且数据不离开电脑的模型，推荐下载 Hy-MT2-1.8B Q4_K_M 这个开源模型，运行之后很低的内存占用，且翻译速度可以保持在大约1秒内。"
+                        "Costs depend on your chosen service and how much you use it.\nCheck that service's current pricing.\nYou can also choose a service that runs on your Mac.", "费用取决于所选服务和用量。\n具体价格请查看服务商说明。\n也可选择在本机处理的服务。"
                     ),
                     identifier: "about-question-cost"
                 )
@@ -585,14 +576,14 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
 
     func title(language: InterfaceLanguage) -> String {
         switch self {
-        case .general: return language.text("General", "通用")
-        case .model: return language.text("Language Model", "语言模型")
-        case .rewriting: return language.text("Rewriting", "改写")
+        case .general: return language.text("Basics", "基本设置")
+        case .model: return language.text("Text services", "翻译服务")
+        case .rewriting: return language.text("Rewriting", "改写设置")
         case .shortcuts: return language.text("Shortcuts", "快捷键")
-        case .appAccess: return language.text("App Access", "应用范围")
+        case .appAccess: return language.text("App access", "使用范围")
         case .terminal: return language.text("Terminal", "终端")
-        case .about: return language.text("About Sayo", "关于 Sayo")
-        case .diagnostics: return language.text("Quick Troubleshooting", "快速排查")
+        case .about: return language.text("About", "关于")
+        case .diagnostics: return language.text("Troubleshooting", "问题排查")
         }
     }
     var symbol: String {
@@ -609,14 +600,14 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     }
     func subtitle(language: InterfaceLanguage) -> String {
         switch self {
-        case .general: return language.text("Make Sayo feel at home in your workflow.", "让语言和日常习惯，都按你的方式来。")
-        case .model: return language.text("Choose the model behind your words.", "选择你的模型，连接更自然的表达。")
-        case .rewriting: return language.text("Fine-tune how your thoughts become words.", "调整改写方式，让每次表达更贴近你的习惯。")
-        case .shortcuts: return language.text("Your favorite actions, a keystroke away.", "把常用操作，变成顺手的快捷键。")
-        case .appAccess: return language.text("Choose where Sayo lends a hand.", "选择 Sayo 可以帮忙的应用。")
-        case .terminal: return language.text("Bring clearer writing to your command line.", "在终端与命令行工具中，继续流畅表达。")
-        case .about: return language.text("A small companion for your words.", "一个安静陪伴你表达的小工具。")
-        case .diagnostics: return language.text("Connection status and recent activity, in one place.", "查看运行状态，快速定位问题。")
+        case .general: return language.text("Set your languages and everyday preferences.", "设置语言和使用习惯。")
+        case .model: return language.text("Choose a service to process your text.", "选择处理文字的服务。")
+        case .rewriting: return language.text("Choose how to rewrite and replace text.", "设置如何改写和替换文字。")
+        case .shortcuts: return language.text("Use shortcuts for everyday actions.", "按快捷键，完成常用操作。")
+        case .appAccess: return language.text("Choose which apps can use Sayo.", "选择在哪些应用中使用。")
+        case .terminal: return language.text("Rewrite commands and drafts in your terminal.", "在终端里改写命令和草稿。")
+        case .about: return language.text("View the version, updates, and author information.", "查看版本、更新和作者信息。")
+        case .diagnostics: return language.text("View activity and find out why an action failed.", "查看使用记录，查找失败原因。")
         }
     }
 }
@@ -632,11 +623,11 @@ struct ModelConfigurationView: View {
         VStack(alignment: .leading, spacing: 18) {
             if showsOnboardingGuide { onboardingGuide }
             HStack(spacing: 8) {
-                Text(t("\(model.configuredModelProfiles.count) saved models", "\(model.configuredModelProfiles.count) 个已配置模型"))
+                Text(t("\(model.configuredModelProfiles.count) services added", "已添加 \(model.configuredModelProfiles.count) 个服务"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 Spacer(minLength: 8)
                 Button { showingProviderPicker = true } label: {
-                    Label(t("Add provider", "新增供应商"), systemImage: "plus")
+                    Label(t("Add service", "添加服务"), systemImage: "plus")
                 }
                 .buttonStyle(SayoButtonStyle(prominent: true))
                 .accessibilityIdentifier("add-model-profile")
@@ -648,11 +639,11 @@ struct ModelConfigurationView: View {
                     }
                 }
                 Button { model.openModelEditorAction?(model.settings.activeModelProfileID) } label: {
-                    Label(t("Edit", "编辑"), systemImage: "pencil")
+                    Label(t("Edit service", "编辑服务"), systemImage: "pencil")
                 }
                 .accessibilityIdentifier("edit-model-profile")
                 Button(role: .destructive) { confirmingDeletion = true } label: {
-                    Label(t("Delete", "删除"), systemImage: "trash")
+                    Label(t("Delete service", "删除服务"), systemImage: "trash")
                 }
                 .disabled(!model.configuredModelProfiles.contains { $0.id == model.settings.activeModelProfileID })
                 .accessibilityIdentifier("delete-model-profile")
@@ -663,17 +654,17 @@ struct ModelConfigurationView: View {
                     HStack(spacing: 14) {
                         ProviderBadge(provider: model.settings.llm.provider, size: 44)
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(t("Current provider", "当前供应商"))
+                            Text(t("Current service", "当前服务"))
                                 .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                             Text(currentProfileName).font(.system(size: 19, weight: .semibold))
                         }
                         Spacer(minLength: 8)
-                        switchHint(t("Click to switch provider", "点击切换供应商"))
+                        switchHint(t("Switch service", "切换服务"))
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(t("Switch provider", "切换供应商"))
+                .accessibilityLabel(t("Switch service", "切换服务"))
                 .accessibilityValue(currentProfileName)
                 .accessibilityIdentifier("switch-model-profile")
                 .popover(isPresented: $showingProviderSwitcher, arrowEdge: .bottom) {
@@ -691,12 +682,12 @@ struct ModelConfigurationView: View {
                             .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                             .frame(width: 96, alignment: .leading)
                         Text(model.settings.llm.model.isEmpty
-                            ? t("No model selected", "尚未选择模型") : model.settings.llm.model)
+                            ? t("No model selected", "未选模型") : model.settings.llm.model)
                             .font(.system(size: 14, weight: .medium, design: .monospaced))
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
                         if canSwitchModel {
-                            switchHint(t("Click to switch model", "点击切换模型"))
+                            switchHint(t("Switch model", "切换模型"))
                         }
                     }
                     .contentShape(Rectangle())
@@ -717,38 +708,38 @@ struct ModelConfigurationView: View {
                     }
                 }
             }
-            .confirmationDialog(t("Delete this model profile?", "删除当前模型配置？"), isPresented: $confirmingDeletion) {
-                Button(t("Delete model profile", "删除模型配置"), role: .destructive) {
+            .confirmationDialog(t("Delete service?", "删除服务"), isPresented: $confirmingDeletion) {
+                Button(t("Confirm deletion", "确认删除"), role: .destructive) {
                     _ = model.deleteModelProfile(model.settings.activeModelProfileID)
                 }
             } message: {
-                Text(t("Its settings and API key will be removed.", "此配置及其 API Key 将被移除。"))
+                Text(t("This removes the service's settings and key.", "将删除此服务的设置和密钥。"))
             }
             SayoCard {
                 HStack {
-                    Text(t("Connection", "接入信息")).font(.system(size: 13, weight: .semibold))
+                    Text(t("Connection settings", "连接设置")).font(.system(size: 13, weight: .semibold))
                     Spacer()
                     if let website = model.settings.llm.provider.homepageURL {
                         Link(destination: website) {
-                            Label(t("Provider website", "供应商官网"), systemImage: "arrow.up.right")
+                            Label(t("Official website", "官方网站"), systemImage: "arrow.up.right")
                                 .font(.system(size: 11))
                         }
                     }
                 }
                 if model.settings.llm.provider != .chromeNano {
-                    detailRow(t("API format", "API 格式"), model.settings.llm.resolvedAPIFormat.displayName)
+                    detailRow(t("Connection type", "连接类型"), model.settings.llm.resolvedAPIFormat.displayName)
                     HStack(alignment: .center, spacing: 18) {
-                        Text("Base URL").font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
+                        Text(t("Service address", "服务地址")).font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                             .frame(width: 96, alignment: .leading)
                         if model.settings.llm.baseURL.isEmpty {
-                            Text(t("Not configured", "尚未配置")).font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
+                            Text(t("No address entered", "未填地址")).font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                         } else {
                             SayoCopyValue(value: model.settings.llm.baseURL, language: model.settings.interfaceLanguage)
                         }
                     }
-                    detailRow("API Key", model.apiKey.isEmpty ? t("Not set", "未填写") : t("Stored in Keychain", "已保存至钥匙串"))
+                    detailRow(t("Service key", "服务密钥"), model.apiKey.isEmpty ? t("No key entered", "未填密钥") : t("Saved in Keychain.", "已存入系统钥匙串。"))
                 } else {
-                    detailRow(t("Connection", "连接方式"), t("On-device in Chrome · No API key", "Chrome 本机推理 · 无需 API Key"))
+                    detailRow(t("Connection", "连接方式"), t("Processed on this Mac. No key needed.", "在本机处理，无需密钥。"))
                 }
             }
             SayoCard { ModelConnectionTestView(model: model) }
@@ -866,7 +857,7 @@ private final class RecorderButton: NSButton {
     func update(_ shortcut: Shortcut?) { value = shortcut; if !recording { updateTitle() } }
     @objc private func record() {
         recording = true
-        title = language.text("Press shortcut…", "请按快捷键…")
+        title = language.text("Press shortcut…", "按下按键")
         window?.makeFirstResponder(self)
     }
     override func keyDown(with event: NSEvent) {
@@ -881,7 +872,7 @@ private final class RecorderButton: NSButton {
         }
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         guard !flags.intersection([.command, .control, .option]).isEmpty else {
-            title = language.text("Use ⌘, ⌃ or ⌥", "请使用 ⌘、⌃ 或 ⌥")
+            title = language.text("Use ⌘, ⌃ or ⌥", "搭配 ⌘、⌃ 或 ⌥")
             return
         }
         let value = Shortcut(keyCode: UInt32(event.keyCode), command: flags.contains(.command), option: flags.contains(.option), control: flags.contains(.control), shift: flags.contains(.shift))
@@ -914,7 +905,7 @@ private struct ShortcutControls<Content: View>: View {
             }.buttonStyle(.plain).foregroundStyle(SayoStyle.muted)
                 .disabled(!isSet)
                 .accessibilityLabel(language.text("Clear ", "清除 ") + label + language.text(" shortcut", " 快捷键"))
-                .help(language.text("Clear shortcut", "清除快捷键"))
+                .help(language.text("Clear shortcut", "清除按键"))
         }
     }
 }

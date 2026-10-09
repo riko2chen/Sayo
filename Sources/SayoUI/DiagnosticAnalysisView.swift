@@ -25,7 +25,7 @@ struct DiagnosticAnalysisView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             aiDiagnosis
-            Picker(t("Category", "记录分类"), selection: $category) {
+            Picker(t("Record type", "记录类型"), selection: $category) {
                 ForEach(DiagnosticCategory.allCases, id: \.self) { Text($0.title(language)).tag($0) }
             }.pickerStyle(.segmented)
                 .onChange(of: category) { application = ""; outcome = ""; selectedID = nil }
@@ -35,16 +35,16 @@ struct DiagnosticAnalysisView: View {
                     ForEach(applications, id: \.key) { Text($0.name).tag($0.key) }
                 }.frame(maxWidth: 230)
                 if category == .invocation {
-                    Picker(t("Outcome", "结果"), selection: $outcome) {
+                    Picker(t("Outcome", "操作结果"), selection: $outcome) {
                         Text(t("All outcomes", "全部结果")).tag("")
-                        Text(t("Inserted", "发生追加")).tag("inserted_at_caret")
+                        Text(t("Original kept", "保留原文")).tag("inserted_at_caret")
                         Text(t("Failed", "操作失败")).tag("failed")
                         Text(t("Replaced", "替换成功")).tag("replaced")
                     }.frame(maxWidth: 210)
                 }
                 Spacer(minLength: 0)
                 Button { model.refreshDiagnostics() } label: { Image(systemName: "arrow.clockwise") }
-                    .help(t("Refresh", "刷新分析"))
+                    .help(t("Refresh records", "刷新记录"))
             }.font(.system(size: 12))
             Text(model.diagnosticStatus).font(.system(size: 10, design: .monospaced)).foregroundStyle(SayoStyle.muted)
             HStack(spacing: 0) {
@@ -62,40 +62,40 @@ struct DiagnosticAnalysisView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 9) {
                         Image(systemName: "text.magnifyingglass").font(.title2)
-                        Text(t("No matching records", "暂无匹配记录")).font(.headline)
-                        Text(t("Invoke Sayo in the target app, then return here; earlier logs remain under Input observations and Unlinked history.", "在目标应用唤起 Sayo 后返回这里；旧日志仍可在「输入观察」和「历史未关联记录」查看。"))
+                        Text(t("No matching records.", "没有符合条件的记录。")).font(.headline)
+                        Text(t("Use Sayo once in the app you want to check.\nReturn here to view the record.\nEarlier records are under Input checks and Older records.", "在要检查的应用中使用一次。\n再回到这里查看记录。\n较早记录可在其他分类查看。"))
                             .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                     }.padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }.frame(height: 365).background(.white.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(SayoStyle.green.opacity(0.15)))
             if model.diagnosticAnalysis.unreadableLines > 0 {
-                Text(t("Skipped \(model.diagnosticAnalysis.unreadableLines) unreadable log lines.", "已跳过 \(model.diagnosticAnalysis.unreadableLines) 条无法解析的日志。"))
+                Text(t("Skipped \(model.diagnosticAnalysis.unreadableLines) unreadable records.", "已跳过 \(model.diagnosticAnalysis.unreadableLines) 条无法读取的记录。"))
                     .font(.caption).foregroundStyle(.orange)
             }
-            DisclosureGroup(t("Recording and export", "记录选项与导出")) {
+            DisclosureGroup(t("Recording settings", "记录设置")) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(t("Sayo analyzes all retained files, gives each invocation a restart-scoped ID, and keeps four rotating 512 KB files.", "Sayo 会分析全部保留日志，为每次唤起分配随重启重置的 ID，并轮转保留四个 512 KB 文件。"))
-                    Toggle(t("Retain diagnostic logs", "保留诊断日志"), isOn: $model.settings.retainDiagnosticLogs)
-                    Text(t("Disabling stops new records while keeping existing files available for export or removal.", "关闭后将停止新增记录，已有文件仍可导出或手动删除。"))
+                    Text(t("All saved records are analyzed.\nEach attempt has a number that resets on restart.\nUp to four 512 KB files are kept.\nNew records replace the oldest when full.", "分析全部保留记录。\n每次操作有独立编号，重启后重置。\n最多保留四个 512 KB 文件。\n文件满后，替换最早的记录。"))
+                    Toggle(t("Keep records", "保留记录"), isOn: $model.settings.retainDiagnosticLogs)
+                    Text(t("Turning this off stops new records.\nExisting records can still be exported or removed manually.", "关闭后，不再添加记录。\n已有记录仍可导出或手动删除。"))
                         .foregroundStyle(SayoStyle.muted)
-                    Toggle(t("Include text snippets for this session (up to 120 characters)", "本次运行记录文本片段（最多 120 字符）"), isOn: Binding(
+                    Toggle(t("Record text snippets", "记录文字"), isOn: Binding(
                         get: { model.diagnosticTextSnippetsEnabled },
                         set: { model.diagnosticTextSnippetsEnabled = $0; model.diagnosticSnippetsAction?($0) }
                     )).disabled(!model.settings.retainDiagnosticLogs)
-                    Text(t("Text logging is off by default and resets on restart without removing existing snippets.", "正文记录默认关闭且重启后重置，但不会删除已有片段。"))
+                    Text(t("Off by default. Records up to 120 characters.\nTurns off again when Sayo restarts.\nExisting text snippets are kept.", "默认关闭，最多记录 120 字符。\n重启后，自动关闭此选项。\n已有文字片段不会删除。"))
                         .foregroundStyle(SayoStyle.muted)
                     Text(model.diagnosticPath).font(.system(size: 10, design: .monospaced)).textSelection(.enabled)
                     HStack {
-                        Button(t("Open log folder", "打开日志文件夹")) { model.openDiagnostics() }
-                        Button(t("Export all retained logs…", "导出全部保留日志…")) { model.exportDiagnosticsAction?() }
+                        Button(t("Show files", "打开文件")) { model.openDiagnostics() }
+                        Button(t("Export all…", "导出全部")) { model.exportDiagnosticsAction?() }
                     }
                 }.font(.system(size: 11)).padding(.top, 8)
             }.font(.system(size: 12))
         }
         .sheet(isPresented: $showingAIDiagnosticResult) {
             VStack(alignment: .leading, spacing: 16) {
-                Text(t("Analysis result", "分析结果")).font(.title2.bold())
+                Text(t("Troubleshooting result", "排查结果")).font(.title2.bold())
                 ScrollView {
                     Text(model.aiDiagnosticResult)
                         .font(.system(size: 13))
@@ -104,11 +104,10 @@ struct DiagnosticAnalysisView: View {
                         .padding(12)
                 }
                 .background(SayoStyle.paper, in: RoundedRectangle(cornerRadius: 9))
-                Text(t("The saved file includes the analysis and the redacted evidence sent to the model.",
-                       "保存的文件包含分析结果，以及发送给模型的脱敏数据。"))
+                Text(t("The file contains the analysis and the records sent.\nSensitive details in those records are hidden.", "文件包含分析结果和发送的记录。\n发送记录中的敏感信息已隐藏。"))
                     .font(.caption).foregroundStyle(SayoStyle.muted)
                 HStack {
-                    Button(t("Save result file…", "保存结果文件…")) { model.saveAIDiagnosticReport() }
+                    Button(t("Save result…", "保存结果")) { model.saveAIDiagnosticReport() }
                     Spacer()
                     Button(t("Done", "完成")) { showingAIDiagnosticResult = false }
                         .keyboardShortcut(.cancelAction)
@@ -120,11 +119,10 @@ struct DiagnosticAnalysisView: View {
         SayoCard {
             HStack(alignment: .top, spacing: 18) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(t("AI DIAGNOSIS · EXPERIMENTAL", "AI 自诊断 · 实验性功能"))
+                    Text(t("Assisted troubleshooting", "智能排查"))
                         .font(.system(size: 10, weight: .semibold)).tracking(1.3)
                     Text(t(
-                        "Scan failed cases from the past 30 minutes, then select which ones to analyze. Only after you authorize analysis will the redacted cases be sent to your configured language model. Input text, rewritten text, API keys, and prompts are excluded.",
-                        "先检测过去 30 分钟内的失败案例，再勾选需要分析的案例。授权后才会将所选案例的脱敏数据发送给已配置的大模型，不包含输入原文、改写结果、API Key 和提示词。"
+                        "This feature is experimental.\nFind failed attempts from the last 30 minutes.\nSelect records, then allow them to be sent for analysis.\nSelected records go to your current service.\nSensitive details are hidden before sending.\nOriginal text, rewrites, keys, and instructions are excluded.", "此功能仍在试用。\n先查找近 30 分钟的失败记录。\n勾选记录后，可授权发送分析。\n所选记录会发送给当前服务。\n发送前会隐藏敏感信息。\n不发送原文、结果、密钥和改写要求。"
                     ))
                     .font(.system(size: 12)).foregroundStyle(SayoStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -134,7 +132,7 @@ struct DiagnosticAnalysisView: View {
                     model.prepareAIDiagnostics()
                 } label: {
                     Text(model.aiDiagnosticCandidates == nil
-                         ? t("Scan failed cases", "检测错误案例") : t("Scan again", "重新检测"))
+                         ? t("Find failed attempts", "查找失败") : t("Search again", "重新查找"))
                 }
                 .disabled(model.aiDiagnosticRunning)
                 .accessibilityIdentifier("start-ai-diagnosis")
@@ -150,14 +148,13 @@ struct DiagnosticAnalysisView: View {
             if !model.aiDiagnosticResult.isEmpty {
                 Divider()
                 HStack {
-                    Button(t("View analysis result", "查看分析结果")) { showingAIDiagnosticResult = true }
+                    Button(t("View result", "查看结果")) { showingAIDiagnosticResult = true }
                         .accessibilityIdentifier("view-ai-diagnosis")
-                    Button(t("Report an issue to the author", "给作者提 issue")) { model.openAIDiagnosticIssue() }
+                    Button(t("Report a problem", "反馈问题")) { model.openAIDiagnosticIssue() }
                         .accessibilityIdentifier("report-ai-diagnosis-issue")
                     Spacer()
                 }
-                Text(t("Opens a GitHub draft containing the redacted analysis and selected cases. Review it on GitHub before submitting.",
-                       "将在 GitHub 打开含脱敏分析结果与所选案例的 issue 草稿，由你检查后提交。"))
+                Text(t("Open a feedback draft on GitHub.\nIt includes the analysis and selected records.\nSensitive details are hidden. Review it before submitting.", "在 GitHub 打开反馈草稿。\n包含分析结果和所选记录。\n敏感信息已隐藏，请检查后提交。"))
                     .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
             }
         }
@@ -165,8 +162,7 @@ struct DiagnosticAnalysisView: View {
     private func aiDiagnosticSelection(_ candidates: AIDiagnosticEvidence) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(t("Selected \(model.aiDiagnosticSelectedCases.count) of \(candidates.failures.count)",
-                       "已选 \(model.aiDiagnosticSelectedCases.count) / \(candidates.failures.count) 个案例"))
+                Text(t("Selected \(model.aiDiagnosticSelectedCases.count) of \(candidates.failures.count)", "已选 \(model.aiDiagnosticSelectedCases.count) / \(candidates.failures.count) 条"))
                 Spacer()
                 Button(t("Select all", "全选")) { model.selectAllAIDiagnosticCases() }
                 Button(t("Invert selection", "反选")) { model.invertAIDiagnosticSelection() }
@@ -201,7 +197,7 @@ struct DiagnosticAnalysisView: View {
                 if model.aiDiagnosticRunning { ProgressView().controlSize(.small) }
                 Button(model.aiDiagnosticRunning
                        ? t("Analyzing…", "分析中…")
-                       : t("Next: authorize analysis with the configured model", "下一步：授权使用已配置的大模型进行分析")) {
+                       : t("Allow analysis", "授权分析")) {
                     model.runAIDiagnostics()
                 }
                 .disabled(model.aiDiagnosticSelectedCases.isEmpty || model.aiDiagnosticRunning)
@@ -240,13 +236,13 @@ struct DiagnosticAnalysisView: View {
                     Text(failure.explanation(language)).font(.system(size: 12)).foregroundStyle(.red)
                 }
                 if group.incomplete || group.category == .history {
-                    Text(t("This incomplete or older record cannot be reconstructed into a full sequence.", "这条不完整或较旧的记录无法还原完整过程。"))
+                    Text(t("This older or incomplete record cannot show every step.", "记录较旧或不完整，无法还原过程。"))
                         .font(.system(size: 11)).foregroundStyle(SayoStyle.muted)
                 }
                 HStack {
-                    Text(group.category == .invocation ? t("Timeline", "过程时间线") : t("Events · newest first", "事件 · 最新在上")).font(.system(size: 12, weight: .semibold))
+                    Text(group.category == .invocation ? t("Steps", "操作过程") : t("Newest first", "最新在上")).font(.system(size: 12, weight: .semibold))
                     Spacer()
-                    Button(t("Export this record…", "导出本次记录…")) { model.exportDiagnosticGroupAction?(group) }
+                    Button(t("Export this record…", "导出本次")) { model.exportDiagnosticGroupAction?(group) }
                         .font(.system(size: 10))
                 }
                 LazyVStack(alignment: .leading, spacing: 13) {
@@ -255,7 +251,7 @@ struct DiagnosticAnalysisView: View {
                             Text("\(index + 1) · " + time(event.date, date: false) + (event.fields["elapsedMs"].map { " · +\($0) ms" } ?? ""))
                                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(SayoStyle.muted)
                             Text(event.explanation(language)).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-                            DisclosureGroup(t("Raw fields", "原始字段")) {
+                            DisclosureGroup(t("Details", "详细信息")) {
                                 Text(event.rawText).font(.system(size: 10, design: .monospaced))
                                     .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                             }.font(.system(size: 10)).foregroundStyle(SayoStyle.muted)

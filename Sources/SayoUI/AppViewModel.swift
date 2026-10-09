@@ -84,7 +84,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
             try action(program, key)
             cliShortcutDrafts[program] = key ?? ""
             if let value = try loadCLIShortcutAction?(program) { cliShortcutDrafts[program] = value }
-            notice = text("CLI shortcut saved; restart the CLI and open a new terminal tab for Codex.", "CLI 快捷键已保存；请重启 CLI，Codex 还需打开新终端标签页。")
+            notice = text("Shortcut saved. Restart the tool.\nFor Codex, also open a new terminal tab.", "按键已保存，请重启对应工具。\nCodex 还需新开终端标签页。")
             noticeIsError = false
         } catch { notice = error.localizedDescription; noticeIsError = true }
     }
@@ -230,11 +230,10 @@ public struct ModelProfileOption: Identifiable, Equatable {
             formatter.timeZone = .current
             formatter.dateFormat = "HH:mm:ss ZZZZZ"
             let time = formatter.string(from: Date())
-            diagnosticStatus = text("Refreshed \(time) · Newest first · Local time", "已刷新 \(time) · 最新在上 · 本地时间")
+            diagnosticStatus = text("Refreshed: \(time)\nLocal time. Newest first.", "已刷新：\(time)\n按本地时间显示，最新在上。")
             return true
         } catch {
-            diagnosticStatus = text("Refresh failed; showing the previous snapshot: \(error.localizedDescription)",
-                "刷新失败，当前仍为上次内容：\(error.localizedDescription)")
+            diagnosticStatus = text("Refresh failed. Showing the previous records.\n\(error.localizedDescription)", "刷新失败，仍显示上次内容。\n\(error.localizedDescription)")
             return false
         }
     }
@@ -254,9 +253,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
         aiDiagnosticCandidates = evidence
         aiDiagnosticSelectedCases = Set(evidence.failures.indices)
         aiDiagnosticStatus = evidence.isEmpty
-            ? text("No failed cases were found in the past 30 minutes.", "过去 30 分钟内没有找到失败案例。")
-            : text("Found \(evidence.failures.count) failed case(s). Select the cases to analyze.",
-                   "找到 \(evidence.failures.count) 个失败案例，请选择需要分析的案例。")
+            ? text("No failed cases in the last 30 minutes.", "近 30 分钟没有失败记录。")
+            : text("Found \(evidence.failures.count) failed attempts.\nSelect the records to analyze.", "找到 \(evidence.failures.count) 条失败记录。\n请选择要分析的记录。")
     }
 
     public func selectAIDiagnosticCase(_ index: Int, selected: Bool) {
@@ -290,8 +288,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
             aiDiagnosticResult = ""; aiDiagnosticEvidence = source
             aiDiagnosticFailureCount = evidence.failures.count
             aiDiagnosticStatus = text(
-                "Sending \(evidence.failures.count) redacted failed case(s) to the configured model…",
-                "正在将 \(evidence.failures.count) 个脱敏失败案例发送给已配置的模型…"
+                "Sending \(evidence.failures.count) selected records to your service…\nSensitive details are hidden.", "正在发送 \(evidence.failures.count) 条所选记录…\n敏感信息已隐藏。"
             )
             aiDiagnosticTask = Task { [weak self] in
                 guard let self else { return }
@@ -303,15 +300,13 @@ public struct ModelProfileOption: Identifiable, Equatable {
                     guard !trimmed.isEmpty else { throw SayoError.invalidResponse }
                     self.aiDiagnosticResult = DiagnosticRedaction.text(trimmed, secrets: secrets)
                     self.aiDiagnosticStatus = self.text(
-                        "AI diagnosis completed from \(evidence.failures.count) failed case(s).",
-                        "AI 自诊断已完成，共分析 \(evidence.failures.count) 个失败案例。"
+                        "Analysis complete: \(evidence.failures.count) records checked.", "排查已完成，分析了 \(evidence.failures.count) 条记录。"
                     )
                     self.aiDiagnosticRunning = false
                 } catch {
                     guard !Task.isCancelled, token == self.aiDiagnosticGeneration else { return }
                     self.aiDiagnosticStatus = self.text(
-                        "AI diagnosis failed: \(error.localizedDescription)",
-                        "AI 自诊断失败：\(error.localizedDescription)"
+                        "Analysis failed.\n\(error.localizedDescription)", "排查失败。\n\(error.localizedDescription)"
                     )
                     self.aiDiagnosticRunning = false
                 }
@@ -319,8 +314,7 @@ public struct ModelProfileOption: Identifiable, Equatable {
         } catch {
             aiDiagnosticRunning = false
             aiDiagnosticStatus = text(
-                "Could not prepare redacted diagnostics: \(error.localizedDescription)",
-                "无法准备脱敏诊断数据：\(error.localizedDescription)"
+                "Could not prepare records for sending.\n\(error.localizedDescription)", "无法准备发送记录。\n\(error.localizedDescription)"
             )
         }
     }
@@ -344,12 +338,10 @@ public struct ModelProfileOption: Identifiable, Equatable {
                 return
             }
             aiDiagnosticStatus = draft.isAbbreviated
-                ? text("GitHub draft opened with an abbreviated report. You can save and attach the full result file.",
-                       "已打开 GitHub 草稿。内容较长，草稿包含摘要，可保存完整结果文件后添加为附件。")
-                : text("GitHub draft opened. Review the content there before submitting.", "已打开 GitHub 草稿，请在 GitHub 检查内容后提交。")
+                ? text("GitHub draft opened with a summary.\nSave the full result to add it as an attachment.", "已打开 GitHub 反馈草稿。\n内容较长，草稿仅包含摘要。\n可保存完整结果，作为附件添加。")
+                : text("GitHub draft opened.\nReview the content before submitting.", "已打开 GitHub 反馈草稿。\n请检查内容后再提交。")
         } catch {
-            aiDiagnosticStatus = text("Could not prepare the GitHub draft: \(error.localizedDescription)",
-                                      "无法准备 GitHub 草稿：\(error.localizedDescription)")
+            aiDiagnosticStatus = text("Could not prepare the feedback draft.\n\(error.localizedDescription)", "无法准备反馈草稿。\n\(error.localizedDescription)")
         }
     }
     public func scheduleAutoSave() {
@@ -578,8 +570,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
                 availableModels = models
                 modelListSucceeded = true
                 modelListResult = models.isEmpty
-                    ? text("No models found.", "未找到模型。")
-                    : text("Loaded \(models.count) models.", "已加载 \(models.count) 个模型。")
+                    ? text("No available models found.", "没有找到可用模型。")
+                    : text("Found \(models.count) models.", "已获取 \(models.count) 个模型。")
                 if settings.llm.model.isEmpty, models.count == 1 { settings.llm.model = models[0] }
             } catch is CancellationError {
                 return
@@ -665,8 +657,8 @@ public struct ModelProfileOption: Identifiable, Equatable {
             try action(program)
             cliEditorInstalled = try loadCLIEditorsAction?() ?? [:]
             notice = install
-                ? text("Installed; open a new terminal tab and restart the CLI.", "已安装；请打开新的终端标签页并重新启动 CLI。")
-                : text("Reset; new terminal tabs use the CLI's own editor settings.", "已恢复默认；新的终端标签页将使用 CLI 自己的编辑器设置。")
+                ? text("Installed.\nOpen a new terminal tab and restart the tool.", "安装完成。\n请新开终端标签页，重启对应工具。")
+                : text("Defaults restored.\nNew terminal tabs use the tool's own editor settings.", "已恢复默认。\n新终端标签页使用工具原有设置。")
             noticeIsError = false
         } catch {
             notice = error.localizedDescription; noticeIsError = true
@@ -692,15 +684,15 @@ private struct ProviderDraft {
 public extension WorkingMode {
     func title(language: InterfaceLanguage) -> String {
         switch self {
-        case .silent: return language.text("Silent", "静默")
-        case .manual: return language.text("Manual", "手动")
+        case .silent: return language.text("Replace directly", "直接替换")
+        case .manual: return language.text("Click to rewrite", "点击改写")
         }
     }
     var symbol: String { switch self { case .silent: "moon"; case .manual: "cursorarrow" } }
     func detail(language: InterfaceLanguage) -> String {
         switch self {
-        case .silent: return language.text("A shortcut, then a quiet replacement.", "按下快捷键后直接安静地替换。")
-        case .manual: return language.text("Click the little bubble when you need it.", "需要时点击小气泡开始改写。")
+        case .silent: return language.text("Press a shortcut to rewrite and replace the original.", "按快捷键，改写后直接替换原文。")
+        case .manual: return language.text("Click the bubble to start a rewrite.", "点击气泡开始改写。")
         }
     }
 }

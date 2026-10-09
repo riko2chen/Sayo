@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Simplified settings menus, controls, and explanations in English and Simplified Chinese, with clearer service setup, privacy notices, and usage cost information."],
+  "zh-CN": ["简化中英文设置菜单、按钮和说明，让服务连接、文字隐私及使用费用更容易理解。"]
+}

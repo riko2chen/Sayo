@@ -46,7 +46,7 @@ Press `Option+E` in another app's input field to get started.
 ## Features
 
 - **In-place translation and polishing**: Handle mixed Chinese and English text, translation, and tone adjustments. Process selected text, or the entire input field by default when nothing is selected.
-- **Preview or replace directly**: Preview results in manual mode, or rewrite directly with a keyboard shortcut in silent mode.
+- **Preview or replace directly**: Use Click to rewrite to preview results, or Replace directly to rewrite and replace text with a keyboard shortcut.
 - **Two target languages**: Assign two shortcuts to rewrite text in two different languages.
 - **Terminal and CLI**: Supports zsh, bash 4+, fish, and external editor integrations for Codex CLI, Claude Code, and more.
 

@@ -143,10 +143,10 @@ public enum DiagnosticCategory: String, CaseIterable, Sendable {
     case invocation, input, system, history
     public func title(_ language: InterfaceLanguage) -> String {
         switch self {
-        case .invocation: return language.text("Invocations", "唤起记录")
-        case .input: return language.text("Input observations", "输入观察")
-        case .system: return language.text("System", "系统事件")
-        case .history: return language.text("Unlinked history", "历史未关联记录")
+        case .invocation: return language.text("Rewrite records", "改写记录")
+        case .input: return language.text("Input checks", "输入检查")
+        case .system: return language.text("App activity", "运行记录")
+        case .history: return language.text("Older records", "旧记录")
         }
     }
 }
@@ -179,15 +179,15 @@ public struct DiagnosticGroup: Identifiable, Equatable, Sendable {
     public var fallbackReason: String? { events.last(where: { $0.event == "fallback_started" })?.fields["reason"] }
     public func summary(_ language: InterfaceLanguage) -> String {
         switch outcome {
-        case "inserted_at_caret": return language.text("Inserted at caret", "已追加，原文保留")
-        case "replaced": return language.text("Replaced successfully", "已成功替换")
+        case "inserted_at_caret": return language.text("Result inserted. Original kept.", "结果已插入，原文保留。")
+        case "replaced": return language.text("Original replaced.", "原文已替换。")
         case "failed": return language.text("Failed", "操作失败")
         case "cancelled": return language.text("Cancelled", "已取消")
-        case "ignored": return language.text("Skipped", "未触发改写")
-        case "ready": return language.text("Result ready; not yet applied", "结果已就绪，尚未应用")
-        case "loading": return language.text("Request started; no completion recorded", "已发起请求，尚无完成记录")
-        case "dispatched": return language.text("Shortcut sent; replacement not confirmed here", "快捷键已发送，此记录尚未确认替换")
-        default: return category == .invocation ? language.text("No outcome recorded", "暂无结果记录") : language.text("\(events.count) events", "\(events.count) 条事件")
+        case "ignored": return language.text("No rewrite was started.", "本次未开始改写。")
+        case "ready": return language.text("Result ready. Original not replaced yet.", "已生成结果，尚未替换。")
+        case "loading": return language.text("Processing started. No completion recorded.", "已开始处理，暂无完成记录。")
+        case "dispatched": return language.text("Shortcut sent. Replacement not confirmed.", "已发送按键，尚未确认替换。")
+        default: return category == .invocation ? language.text("No result recorded.", "暂无结果记录。") : language.text("\(events.count) events", "\(events.count) 条事件")
         }
     }
 }
