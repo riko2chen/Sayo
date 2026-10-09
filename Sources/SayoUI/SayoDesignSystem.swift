@@ -164,11 +164,21 @@ struct ProviderBadge: View {
         }
     }
     var body: some View {
-        Image(systemName: symbol).font(.system(size: size * 0.46, weight: .medium))
-            .foregroundStyle(color)
-            .frame(width: size, height: size)
-            .background(color.opacity(0.085), in: RoundedRectangle(cornerRadius: size * 0.28))
-            .accessibilityHidden(true)
+        Group {
+            if let image = ProviderIconAssets.image(for: provider) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size * 0.62, height: size * 0.62)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.46, weight: .medium))
+                    .foregroundStyle(color)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(color.opacity(0.085), in: RoundedRectangle(cornerRadius: size * 0.28))
+        .accessibilityHidden(true)
     }
 }
 
