@@ -35,5 +35,12 @@
       "restore-input-animation-setting-20261003",
       "terminal-routing-diagnostics-20261003"
     ]
+  },
+  {
+    "version": "0.2.4",
+    "updates": [
+      "lobehub-provider-icons-20261008",
+      "plain-settings-copy-20261008"
+    ]
   }
 ]

@@ -1,5 +1,17 @@
 # Sayo update notes
 
+## 0.2.4
+
+### English
+
+- Use crisp LobeHub SVG logos for supported model providers in settings and service editors.
+- Simplified settings menus, controls, and explanations in English and Simplified Chinese, with clearer service setup, privacy notices, and usage cost information.
+
+### 简体中文
+
+- 大模型设置和服务编辑窗口采用 LobeHub SVG 品牌图标，缩放更清晰。
+- 简化中英文设置菜单、按钮和说明，让服务连接、文字隐私及使用费用更容易理解。
+
 ## 0.2.3
 
 ### English
