@@ -48,5 +48,12 @@
     "updates": [
       "restore-about-faq-copy-20261009"
     ]
+  },
+  {
+    "version": "0.2.6",
+    "updates": [
+      "claude-goto-editor-arguments-20261010",
+      "otty-focused-pane-routing-20261010"
+    ]
   }
 ]

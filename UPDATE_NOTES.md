@@ -1,5 +1,17 @@
 # Sayo update notes
 
+## 0.2.6
+
+### English
+
+- Accept Claude Code's VS Code-style external-editor arguments so newer Claude versions can replace drafts through existing Sayo integrations.
+- Fix Claude Code editor routing in Otty with multiple sessions and custom task titles by recognizing the agent in the focused pane.
+
+### 简体中文
+
+- 兼容 Claude Code 的 VS Code 风格外部编辑器参数，让新版 Claude 能通过已有 Sayo 集成替换草稿。
+- 修复 Otty 多会话及自定义任务标题下的 Claude Code 编辑器路由，使用当前聚焦窗格的代理信息识别 CLI。
+
 ## 0.2.5
 
 ### English
