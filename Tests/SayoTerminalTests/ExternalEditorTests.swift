@@ -22,6 +22,40 @@ final class ExternalEditorTests: XCTestCase {
         }
     }
 
+    func testClaudeGotoArgumentsRewriteTheDraftAndPreserveSpaces() async throws {
+        try await withDraft { file in
+            for arguments in [[file.path], ["-g", file.path + ":1"], ["--goto", file.path + ":12:3"]] {
+                XCTAssertEqual(try ExternalEditor.draftURL(arguments: arguments), file)
+            }
+            let url = try ExternalEditor.draftURL(arguments: ["-g", file.path + ":1"])
+            try await ExternalEditor.edit(fileURL: url) { _ in "rewritten" }
+            XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "rewritten")
+            XCTAssertFalse(FileManager.default.fileExists(atPath: file.path + ":1"))
+        }
+    }
+
+    func testGotoPreservesLiteralNumericFilenameSuffixAndRejectsAmbiguousPaths() async throws {
+        try await withDraft { file in
+            let numericFile = URL(fileURLWithPath: file.path + ":12")
+            try Data("literal filename".utf8).write(to: numericFile)
+            XCTAssertEqual(try ExternalEditor.draftURL(arguments: [numericFile.path]), numericFile)
+            XCTAssertEqual(try ExternalEditor.draftURL(arguments: ["-g", numericFile.path]), numericFile)
+            XCTAssertThrowsError(try ExternalEditor.draftURL(arguments: ["-g", numericFile.path + ":3"]))
+            XCTAssertEqual(try String(contentsOf: numericFile, encoding: .utf8), "literal filename")
+        }
+    }
+
+    func testInvalidEditorArgumentsDoNotSelectOrModifyADraft() async throws {
+        try await withDraft { file in
+            let original = try Data(contentsOf: file)
+            for arguments in [[], ["--unknown", file.path], ["-g", file.path + ":bad"],
+                              ["-g", file.path + ":1", "another-file"], ["-g", "/missing-draft:1"]] {
+                XCTAssertThrowsError(try ExternalEditor.draftURL(arguments: arguments))
+            }
+            XCTAssertEqual(try Data(contentsOf: file), original)
+        }
+    }
+
     func testFailurePreservesOriginal() async throws {
         try await withDraft { file in
             let original = try Data(contentsOf: file)

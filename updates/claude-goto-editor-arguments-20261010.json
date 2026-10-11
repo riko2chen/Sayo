@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Accept Claude Code's VS Code-style external-editor arguments so newer Claude versions can replace drafts through existing Sayo integrations."],
+  "zh-CN": ["兼容 Claude Code 的 VS Code 风格外部编辑器参数，让新版 Claude 能通过已有 Sayo 集成替换草稿。"]
+}
