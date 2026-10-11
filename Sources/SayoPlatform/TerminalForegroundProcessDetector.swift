@@ -50,7 +50,8 @@ public enum TerminalForegroundProcessDetector {
             terminalPID: application.processIdentifier,
             focusedTTY: tty(in: context.value),
             focusedText: context.value,
-            focusedTitle: context.title
+            focusedTitle: context.title,
+            focusedAgent: OttyFocusedPaneDetector.detect(in: application)
         )
     }
 
@@ -59,10 +60,11 @@ public enum TerminalForegroundProcessDetector {
         terminalPID: pid_t,
         focusedTTY: String?,
         focusedText: String = "",
-        focusedTitle: String = ""
+        focusedTitle: String = "",
+        focusedAgent: TerminalFocusedAgent? = nil
     ) -> TerminalForegroundRoute {
         detectWithDiagnostics(records: records, terminalPID: terminalPID, focusedTTY: focusedTTY,
-                              focusedText: focusedText, focusedTitle: focusedTitle).route
+                              focusedText: focusedText, focusedTitle: focusedTitle, focusedAgent: focusedAgent).route
     }
 
     static func detectWithDiagnostics(
@@ -70,7 +72,8 @@ public enum TerminalForegroundProcessDetector {
         terminalPID: pid_t,
         focusedTTY: String?,
         focusedText: String = "",
-        focusedTitle: String = ""
+        focusedTitle: String = "",
+        focusedAgent: TerminalFocusedAgent? = nil
     ) -> TerminalForegroundDetection {
         var descendants: Set<pid_t> = [terminalPID]
         var changed = true
@@ -105,6 +108,23 @@ public enum TerminalForegroundProcessDetector {
             case .unknown: fields["route"] = "unknown"
             }
             return .init(route: route, fields: fields)
+        }
+
+        // Unlike scrollback or the window title, Otty reports the agent in the
+        // focused pane. Still require a matching live foreground process: hooks
+        // can outlast an exited CLI. A program match does not identify its TTY
+        // when several panes run the same CLI; never pick an arbitrary session.
+        if let focusedAgent {
+            guard case .supported(let program) = focusedAgent else {
+                return result(.unknown, method: "focused_pane_unsupported_agent")
+            }
+            let matches = candidates.filter { $0.1 == program }
+            guard !matches.isEmpty else {
+                return result(.unknown, method: "focused_pane_agent_unconfirmed")
+            }
+            let ttys = Set(matches.map(\.0.tty))
+            return result(.cli(.init(program: program, tty: ttys.count == 1 ? ttys.first : nil)),
+                          method: "focused_pane_agent")
         }
 
         // Ghostty retains scrollback in AXValue, including stale "Last login … on

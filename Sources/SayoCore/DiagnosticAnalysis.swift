@@ -62,6 +62,9 @@ public struct DiagnosticEvent: Codable, Equatable, Sendable {
         case "replacement_failed", "invocation_failed": return Self.errorExplanation(f["error"], language)
         case "terminal_shortcut_detected":
             let methods = ["focused_title": "聚焦窗口标题与前台进程匹配", "focused_tty": "聚焦 TTY 与前台进程匹配",
+                           "focused_pane_agent": "聚焦 Otty 窗格的代理名称与前台进程匹配",
+                           "focused_pane_unsupported_agent": "聚焦 Otty 窗格运行的是尚未支持的代理",
+                           "focused_pane_agent_unconfirmed": "聚焦 Otty 窗格的代理没有匹配的前台进程",
                            "focused_text_program": "聚焦终端内容中的 CLI 名称与前台进程匹配", "single_session": "只有一个终端会话",
                            "no_supported_foreground_cli": "没有受支持的前台 CLI", "ambiguous_sessions": "多个会话无法确定聚焦 CLI",
                            "process_snapshot_unavailable": "无法读取进程快照"]
