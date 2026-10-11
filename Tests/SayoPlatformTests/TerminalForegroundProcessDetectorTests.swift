@@ -3,6 +3,53 @@ import SayoCore
 @testable import SayoPlatform
 
 final class TerminalForegroundProcessDetectorTests: XCTestCase {
+    private var ottySessions: [TerminalProcessRecord] {
+        TerminalForegroundProcessDetector.parseProcessSnapshot("""
+          100     1   100     0 ??       Otty /Applications/Otty.app/Contents/MacOS/Otty
+          101   100   101   201 ttys000  zsh -zsh
+          201   101   201   201 ttys000  claude /usr/local/bin/claude
+          102   100   102   102 ttys001  zsh -zsh
+          103   100   103   301 ttys002  zsh -zsh
+          301   103   301   301 ttys002  codex /usr/local/bin/codex
+        """)
+    }
+
+    func testOttyFocusedPaneRoutesClaudeWithMultipleSessionsAndCustomTaskTitle() {
+        // These are the old detector's missing clues after a full-screen redraw.
+        XCTAssertEqual(TerminalForegroundProcessDetector.detect(records: ottySessions, terminalPID: 100,
+            focusedTTY: nil, focusedText: "❯ 请整理这个流程", focusedTitle: "◐ 当前任务"), .unknown)
+        let detection = TerminalForegroundProcessDetector.detectWithDiagnostics(records: ottySessions, terminalPID: 100,
+            focusedTTY: nil, focusedText: "❯ 请整理这个流程", focusedTitle: "◐ 当前任务", focusedAgent: .supported(.claude))
+        XCTAssertEqual(detection.route, .cli(.init(program: .claude, tty: "ttys000")))
+        XCTAssertEqual(detection.fields["detectionMethod"], "focused_pane_agent")
+        XCTAssertEqual(detection.fields["sessionCount"], "3")
+        XCTAssertFalse(detection.fields.values.contains { $0.contains("当前任务") || $0.contains("整理") })
+    }
+
+    func testOttyFocusedPaneOverridesOtherCLINamesAndStaleTTYInScrollbackOrTitle() {
+        XCTAssertEqual(TerminalForegroundProcessDetector.detect(records: ottySessions, terminalPID: 100,
+            focusedTTY: "ttys002", focusedText: "Last login on ttys002\nCodex output", focusedTitle: "Codex task",
+            focusedAgent: .supported(.claude)), .cli(.init(program: .claude, tty: "ttys000")))
+    }
+
+    func testMultipleClaudePanesIdentifyProgramWithoutInventingFocusedTTY() {
+        let records = ottySessions + TerminalForegroundProcessDetector.parseProcessSnapshot("""
+          104   100   104   401 ttys003 zsh -zsh
+          401   104   401   401 ttys003 claude /usr/local/bin/claude
+        """)
+        XCTAssertEqual(TerminalForegroundProcessDetector.detect(records: records, terminalPID: 100,
+            focusedTTY: nil, focusedAgent: .supported(.claude)), .cli(.init(program: .claude, tty: nil)))
+    }
+
+    func testOttyUnsupportedOrUnconfirmedAgentNeverFallsThroughToAnotherSession() {
+        for agent in [TerminalFocusedAgent.unsupported, .supported(.agy)] {
+            XCTAssertEqual(TerminalForegroundProcessDetector.detect(records: ottySessions, terminalPID: 100,
+                focusedTTY: "ttys000", focusedText: "Claude Code", focusedTitle: "Claude Code", focusedAgent: agent), .unknown)
+        }
+        XCTAssertEqual(TerminalForegroundProcessDetector.detect(records: ottySessions, terminalPID: 999,
+            focusedTTY: nil, focusedAgent: .supported(.claude)), .unknown)
+    }
+
     func testDiagnosticEvidenceExplainsTitleTTYAndAmbiguousRoutesWithoutText() {
         let records = TerminalForegroundProcessDetector.parseProcessSnapshot("""
           100     1   100   100 ??       Otty /Applications/Otty.app/Contents/MacOS/Otty

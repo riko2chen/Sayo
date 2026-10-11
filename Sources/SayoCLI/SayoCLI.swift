@@ -10,9 +10,9 @@ struct SayoCLI {
         do {
             let arguments = Array(CommandLine.arguments.dropFirst())
             if arguments.first == "edit" {
-                guard arguments.count == 2 else { throw CLIError.usage }
+                let fileURL = try ExternalEditor.draftURL(arguments: Array(arguments.dropFirst()))
                 let pid = try frontmostApplicationPID()
-                try await ExternalEditor.edit(fileURL: URL(fileURLWithPath: arguments[1])) { text in
+                try await ExternalEditor.edit(fileURL: fileURL) { text in
                     // External editors receive the complete draft, with no caret metadata.
                     let request = TerminalRequest(text: text,
                         selection: .init(location: 0, length: text.utf16.count), applicationPID: pid)

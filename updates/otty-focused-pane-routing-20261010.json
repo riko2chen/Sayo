@@ -1,0 +1,5 @@
+{
+  "bump": "patch",
+  "en": ["Fix Claude Code editor routing in Otty with multiple sessions and custom task titles by recognizing the agent in the focused pane."],
+  "zh-CN": ["修复 Otty 多会话及自定义任务标题下的 Claude Code 编辑器路由，使用当前聚焦窗格的代理信息识别 CLI。"]
+}
